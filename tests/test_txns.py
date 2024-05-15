@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal
+from pydantic import ValidationError
 import pytest
 from brightsidebudget import Posting
 
@@ -23,3 +24,15 @@ def test_posting_from_dict(d: dict):
     for k, v in d.items():
         if k not in ["Account", "Amount", "Txn", "Date"]:
             assert p.tags[k] == v
+
+
+@pytest.mark.parametrize("d",
+                         [{"Date": "2021-01-01", "Account": "A", "Amount": 100},
+                          {"Txn": "1", "Account": "A", "Amount": -100,
+                           "desc": "My transaction"},
+                          {"Txn": 1, "Date": "2021-01-01", "Amount": 100.04},
+                          {"Txn": 1, "Date": "2021-01-01", "Account": "A"},
+                          {"Txn": "Hello", "Date": "2021-01-01", "Account": "A", "Amount": 100}])
+def test_bad_from_dict(d: dict):
+    with pytest.raises((ValidationError, ValueError)):
+        Posting.from_dict(d)

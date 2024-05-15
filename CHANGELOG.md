@@ -6,7 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
-## [Unreleased]
+## [0.1.1] - 2024-05-15
+### Added
+- `from_dict` method of `Account`, `Posting`, `BAssertion` now properly checks
+  for the presence of the required keys in the dictionary.
+- New `from_dicts` method of `Journal` to create a journal from a list of
+  dictionaries.
+- More unit tests
+### Fixed
+- Fixed a bug in the `Journal` class that triggered an `TypeError` when an
+  account was not found in the journal's accounts list.
+- Journal now checks for that each transaction has one unique date.
+- Journal now checks for duplicate balance assertions.
 
 ## [0.1.0] - 2024-05-15
 Initial release

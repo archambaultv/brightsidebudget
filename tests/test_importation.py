@@ -10,7 +10,7 @@ def test_read_bank_csv(bank_checking_file):
 
 
 def test_remove_duplicates(bank_checking_file, accounts_file, txns_file):
-    j = Journal.from_csv(accounts=accounts_file, txns=txns_file)
+    j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
     ps = read_bank_csv(bank_checking_file, "Checking", date_col="Date",
                        amount_in_col="Credit", amount_out_col="Debit")
     assert len(ps) == 5

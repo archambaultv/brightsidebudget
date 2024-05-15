@@ -1,6 +1,7 @@
 from datetime import date
 from decimal import Decimal
 import pytest
+from pydantic import ValidationError
 from brightsidebudget import BAssertion
 
 
@@ -18,3 +19,15 @@ def test_from_dict(d: dict):
     assert b.account == d["Account"]
     assert b.balance == Decimal(str(d["Balance"]))
     assert b.include_children is d.get("Include children", True)
+
+
+@pytest.mark.parametrize("d",
+                         [{"Date": True, "Account": "A", "Balance": 100},
+                          {"Date": date(2016, 1, 1), "Account": "B", "Balance": "Hello"},
+                          {"Account": "C", "Balance": -100},
+                          {"Date": date(2016, 1, 1),  "Balance": 100,
+                           "Include children": False},
+                          {"Date": date(2016, 1, 1), "Account": "A"}])
+def test_bad_from_dict(d: dict):
+    with pytest.raises((ValidationError, ValueError)):
+        BAssertion.from_dict(d)

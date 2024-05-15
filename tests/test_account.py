@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 from brightsidebudget import Account
 
 
@@ -16,3 +17,13 @@ def test_from_dict(d: dict):
     for k, v in d.items():
         if k not in ["Account", "Parent"]:
             assert account.tags[k] == v
+
+
+@pytest.mark.parametrize("d",
+                         [{"Parent": "B"},
+                          {},
+                          {"Account": ""},
+                          {"Account": 125}])
+def test_bad_from_dict(d: dict):
+    with pytest.raises((ValidationError, ValueError)):
+        Account.from_dict(d)

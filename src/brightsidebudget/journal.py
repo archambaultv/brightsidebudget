@@ -28,6 +28,8 @@ class Account(BaseModel):
 
     @classmethod
     def from_dict(cls, d: dict) -> 'Account':
+        if "Account" not in d:
+            raise ValueError("Missing 'Account' key in account dict")
         p = d.get("Parent", None)
         if p == "":
             p = None
@@ -57,6 +59,9 @@ class Posting(BaseModel):
 
     @classmethod
     def from_dict(cls, d: dict) -> 'Posting':
+        for k in ["Txn", "Date", "Account", "Amount"]:
+            if k not in d:
+                raise ValueError(f"Missing '{k}' key in posting dict")
         return cls(txn=d["Txn"], date=d["Date"],
                    account=d["Account"], amount=d["Amount"],
                    tags=mk_tags(d, {"Txn", "Date", "Account", "Amount"}))
@@ -90,6 +95,9 @@ class BAssertion(BaseModel):
 
     @classmethod
     def from_dict(cls, d: dict) -> 'BAssertion':
+        for k in ["Date", "Account", "Balance"]:
+            if k not in d:
+                raise ValueError(f"Missing '{k}' key in bassertion dict")
         return cls(date=d["Date"], account=d["Account"],
                    balance=d["Balance"], include_children=d.get("Include children", True),
                    tags=mk_tags(d, {"Date", "Account", "Balance", "Include children"}))
@@ -169,10 +177,10 @@ class PostingExtraTags(BaseModel):
 
 class Journal():
     def __init__(self, accounts: list[Account], postings: list[Posting],
-                 bassertions: list[BAssertion]):
+                 bassertions: list[BAssertion] = None):
         self.accounts = accounts
         self.postings = postings
-        self.bassertions = bassertions
+        self.bassertions = bassertions if bassertions is not None else []
         self.accounts_graph: nx.DiGraph = None  # Also serves as a dict of accounts
         self.roots: list[Account] = None
         self.postings_by_txn: dict[int, list[Posting]] = None
@@ -189,7 +197,7 @@ class Journal():
         self._init()
 
     def _init(self):
-        # Verify basic invariants
+        # Verify accounts
         seen = set()
         for a in self.accounts:
             if a.identifier in seen:
@@ -210,10 +218,10 @@ class Journal():
             raise ValueError(f"Cycle in accounts: {msg}")
         for p in self.postings:
             if p.account not in self.accounts_graph:
-                raise ValueError(f"Unknown account: {p['Account']}")
+                raise ValueError(f"Unknown account: {p.account}")
         for ba in self.bassertions:
             if ba.account not in self.accounts_graph:
-                raise ValueError(f"Unknown account: {ba['Account']}")
+                raise ValueError(f"Unknown account: {ba.account}")
 
         # Add useful information to accounts graph
         self.roots = [self.accounts_graph.nodes[n]["account"]
@@ -235,10 +243,21 @@ class Journal():
             self.postings_by_txn[p.txn].append(p)
             self.postings_by_acc[p.account].append(p)
 
+        # Verify txns
         for k, v in self.postings_by_txn.items():
             s = sum([t.amount for t in v])
             if s != Decimal("0"):
                 raise ValueError(f"Txn {k} is not balanced. Sum: {s}")
+            dt_count = len({t.date for t in v})
+            if dt_count != 1:
+                raise ValueError(f"Txn {k} has {dt_count} dates")
+
+        # Verify bassertions
+        seen = set()
+        for ba in self.bassertions:
+            if (ba.date, ba.account) in seen:
+                raise ValueError(f"Duplicate bassertion: {ba.date} {ba.account}")
+            seen.add((ba.date, ba.account))
 
         # Compute balances
         self.min_date = min([t.date for t in self.postings], default=None)
@@ -430,26 +449,33 @@ class Journal():
         return d
 
     @classmethod
-    def from_csv(cls, accounts: str, txns: Union[str, list[str]], bassertions: str = None,
+    def from_csv(cls, accounts: str, postings: Union[str, list[str]], bassertions: str = None,
                  encoding: str = "utf-8", **dictreader_args) -> 'Journal':
-        accounts = [Account.from_dict(x)
-                    for x
-                    in csv.DictReader(open(accounts, "r", encoding=encoding), **dictreader_args)]
+        with open(accounts, "r", encoding=encoding) as f:
+            accounts = [Account.from_dict(x) for x in csv.DictReader(f, **dictreader_args)]
+
         ps = []
-        if isinstance(txns, str):
-            txns = [txns]
-        for f in txns:
-            ps.extend([Posting.from_dict(x)
-                       for x
-                       in csv.DictReader(open(f, "r", encoding=encoding), **dictreader_args)])
+        if isinstance(postings, str):
+            postings = [postings]
+        for f in postings:
+            with open(f, "r", encoding=encoding) as f:
+                ps.extend([Posting.from_dict(x) for x in csv.DictReader(f, **dictreader_args)])
 
         if bassertions is None:
             bas = []
         else:
-            bas = [BAssertion.from_dict(x)
-                   for x
-                   in csv.DictReader(open(bassertions, "r", encoding=encoding), **dictreader_args)]
+            with open(bassertions, "r", encoding=encoding) as f:
+                bas = [BAssertion.from_dict(x) for x in csv.DictReader(f, **dictreader_args)]
         return cls(accounts, ps, bas)
+
+    @classmethod
+    def from_dicts(cls, accounts: list[dict], postings: list[dict],
+                   bassertions: list[dict] = None) -> 'Journal':
+        if bassertions is None:
+            bassertions = []
+        return cls([Account.from_dict(x) for x in accounts],
+                   [Posting.from_dict(x) for x in postings],
+                   [BAssertion.from_dict(x) for x in bassertions])
 
 
 def find_faulty_postings(j: Journal, fail: BAssertionFail,

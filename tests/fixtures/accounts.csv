@@ -1,0 +1,18 @@
+Account,Parent
+Assets,
+Liabilities,
+Equity,
+Revenue,
+Expenses,
+Checking,Assets
+Savings,Assets
+House,Assets
+Credit card,Liabilities
+Long term debt,Liabilities
+Mortgage,Long term debt
+Opening balance,Equity
+Salary,Revenue
+Utilities,Expenses
+Rent,Expenses
+Food,Expenses
+Other expenses,Expenses

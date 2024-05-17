@@ -2,7 +2,7 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
-from brightsidebudget import Journal
+from brightsidebudget import Journal, Posting
 
 
 def test_from_csv(accounts_file, txns_file, bassertions_file):
@@ -31,6 +31,32 @@ def test_txn_extra(accounts_file, txns_file, bassertions_file):
                               'Month': 1, 'Parent': 'Assets', 'Year': 2021,
                               'Txn accounts': ['Checking', 'Credit card', 'House', 'Mortgage',
                                                'Opening balance', 'Savings']}
+
+
+def test_next_txn_id(accounts_file, txns_file):
+    j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
+    next_id = j.next_txn_id()
+    assert next_id == 3
+
+
+def test_txn_extra2(accounts_file, txns_file):
+    j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
+    ps = j.postings
+    next_id = j.next_txn_id()
+    ps.append(Posting(txn=next_id, date=date(2021, 2, 1), account="Checking", amount=2500,
+                      tags={"Description": None}))
+    ps.append(Posting(txn=next_id, date=date(2021, 2, 1), account="Savings", amount=-2500,
+                      tags={"Description": None}))
+    r = j.postings_extra(ps=ps, today=date(2021, 1, 30))
+    assert len(r) == 10
+    assert r[-1].to_dict() == {"Txn": 3, "Date": date(2021, 2, 1), "Account": "Savings",
+                               "Amount": Decimal(-2500), 'Account depth': 2, "Description": None,
+                               'Fiscal month': 2, 'Fiscal year': 2021, 'Future date': True,
+                               'Hierarchy depth 1': 'Assets', 'Hierarchy depth 2': 'Savings',
+                               'Hierarchy depth 3': None, 'Last 182 days': True,
+                               'Last 30 days': True, 'Last 365 days': True, 'Last 91 days': True,
+                               'Month': 2, 'Parent': 'Assets', 'Year': 2021,
+                               'Txn accounts': ['Checking', 'Savings']}
 
 
 def test_empty_journal():

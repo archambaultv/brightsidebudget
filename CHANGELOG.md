@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
+## Unreleased
+### Fixed
+- `balance` method of `Account` correctly returns 0 when the journal has no postings.
+
+
 ## [0.1.2] - 2024-05-17
 ### Added
 - `next_txn_id` method of `Journal` to get the next available transaction ID.

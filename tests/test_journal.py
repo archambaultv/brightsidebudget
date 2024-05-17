@@ -18,6 +18,12 @@ def test_check_balances(accounts_file, txns_file, bassertions_file):
     assert len(err) == 0
 
 
+def test_check_balances2(accounts_file, bassertions_file):
+    j = Journal.from_csv(accounts=accounts_file, postings=[], bassertions=bassertions_file)
+    err = j.check_bassertions()
+    assert len(err) == 6
+
+
 def test_txn_extra(accounts_file, txns_file, bassertions_file):
     j = Journal.from_csv(accounts=accounts_file, postings=txns_file, bassertions=bassertions_file)
     r = j.postings_extra(today=date(2021, 1, 30))

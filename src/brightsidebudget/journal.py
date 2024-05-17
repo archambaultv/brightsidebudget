@@ -1,4 +1,5 @@
 
+from collections import defaultdict
 import csv
 import networkx as nx
 from datetime import date, timedelta
@@ -392,6 +393,11 @@ class Journal():
         """
         if ps is None:
             ps = [t.copy() for t in self.postings]
+            ps_by_id = self.postings_by_txn
+        else:
+            ps_by_id = defaultdict(list)
+            for p in ps:
+                ps_by_id[p.txn].append(p)
         if today is None:
             today = date.today()
         if extra is None:
@@ -421,7 +427,7 @@ class Journal():
             for p in ps:
                 txn_id = p.txn
                 p.tags[extra.txn_accounts_tag] = sorted({x.account
-                                                         for x in self.postings_by_txn[txn_id]})
+                                                         for x in ps_by_id[txn_id]})
                 if extra.txn_accounts_as_str:
                     p.tags[extra.txn_accounts_tag] = (extra
                                                       .txn_accounts_join

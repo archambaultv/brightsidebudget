@@ -448,6 +448,13 @@ class Journal():
                 d[x] += 1
         return d
 
+    def next_txn_id(self) -> int:
+        """
+        Return the next available txn id. All numbers from this id and up are
+        available for new txns.
+        """
+        return max(self.postings_by_txn.keys(), default=0) + 1
+
     @classmethod
     def from_csv(cls, accounts: str, postings: Union[str, list[str]], bassertions: str = None,
                  encoding: str = "utf-8", **dictreader_args) -> 'Journal':

@@ -12,6 +12,7 @@ def read_bank_csv(file: str, account: str, date_col: str,
                   amount_out_col: Union[str, None] = None,
                   remove_delimiter_from: list[str] = [],
                   encoding: str = "utf-8",
+                  skiprows: int = 0,
                   **dictreader_args) -> list[Posting]:
     # Check amount_col is not set with amount_in_col or amount_out_col
     if amount_col is not None and (amount_in_col is not None or amount_out_col is not None):
@@ -33,6 +34,8 @@ def read_bank_csv(file: str, account: str, date_col: str,
 
     ps = []
     with open(file, "r", encoding=encoding) as f:
+        for _ in range(skiprows):
+            next(f)
         for i, row in enumerate(csv.DictReader(f, **dictreader_args), start=1):
             if amount_col:
                 amnt = row[amount_col]

@@ -300,7 +300,7 @@ class Journal():
         return err
 
     def balance(self, account: str, date: date, include_children: bool = True) -> Decimal:
-        if date < self.min_date:
+        if self.min_date is None or date < self.min_date:
             return Decimal("0")
         if date > self.max_date:
             date = self.max_date
@@ -311,7 +311,7 @@ class Journal():
         return total
 
     def flow(self, account: str, date: date, include_children: bool = True) -> Decimal:
-        if date < self.min_date:
+        if self.min_date is None or date < self.min_date:
             return Decimal("0")
         if date > self.max_date:
             return Decimal("0")

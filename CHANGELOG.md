@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
+
+## [0.1.5] - 2024-05-21
+### Fixed
+- Fixed a bug in `read_bank_csv` when the amount column was empty instead of 0.
+
+
 ## [0.1.4] - 2024-05-21
 ### Fixed
 - Fixed a bug in `read_bank_csv` when using the `remove_delimiter_from` parameter.

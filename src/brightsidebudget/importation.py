@@ -10,7 +10,7 @@ def read_bank_csv(file: str, account: str, date_col: str,
                   amount_col: Union[str, None] = None,
                   amount_in_col: Union[str, None] = None,
                   amount_out_col: Union[str, None] = None,
-                  remove_delimiter_from: list[str] = [],
+                  remove_delimiter_from: Union[str, list[str]] = None,
                   encoding: str = "utf-8",
                   skiprows: int = 0,
                   **dictreader_args) -> list[Posting]:
@@ -19,6 +19,8 @@ def read_bank_csv(file: str, account: str, date_col: str,
         raise ValueError("amount_col cannot be used with amount_in_col or amount_out_col.")
     if amount_col is None and (amount_in_col is None or amount_out_col is None):
         raise ValueError("Both amount_in_col and amount_out_col must be set.")
+    if isinstance(remove_delimiter_from, str):
+        remove_delimiter_from = [remove_delimiter_from]
 
     def remove_unquoted_delimiter(content: str) -> str:
         d = dictreader_args.get("separator", ",")
@@ -31,9 +33,11 @@ def read_bank_csv(file: str, account: str, date_col: str,
             content = f.read()
         content = remove_unquoted_delimiter(content)
         file = StringIO(content)
+    else:
+        file = open(file, "r", encoding=encoding)
 
     ps = []
-    with open(file, "r", encoding=encoding) as f:
+    with file as f:
         for _ in range(skiprows):
             next(f)
         for i, row in enumerate(csv.DictReader(f, **dictreader_args), start=1):

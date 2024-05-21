@@ -17,6 +17,11 @@ def bank_checking_err_delimiter() -> str:
 
 
 @pytest.fixture()
+def bank_checking_empty_amnt_col() -> str:
+    return "tests/fixtures/bank_checking_empty_amnt_col.csv"
+
+
+@pytest.fixture()
 def bassertions_file() -> str:
     return "tests/fixtures/bassertions.csv"
 

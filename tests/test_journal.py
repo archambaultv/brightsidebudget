@@ -28,15 +28,15 @@ def test_txn_extra(accounts_file, txns_file, bassertions_file):
     j = Journal.from_csv(accounts=accounts_file, postings=txns_file, bassertions=bassertions_file)
     r = j.postings_extra(today=date(2021, 1, 30))
     assert len(r) == 8
-    assert r[0].to_dict() == {"Txn": 1, "Date": date(2021, 1, 1), "Account": "Checking",
-                              "Amount": Decimal(2500), 'Account depth': 2, "Description": None,
-                              'Fiscal month': 1, 'Fiscal year': 2021, 'Future date': False,
-                              'Hierarchy depth 1': 'Assets', 'Hierarchy depth 2': 'Checking',
-                              'Hierarchy depth 3': None, 'Last 182 days': True,
-                              'Last 30 days': True, 'Last 365 days': True, 'Last 91 days': True,
-                              'Month': 1, 'Parent': 'Assets', 'Year': 2021,
-                              'Txn accounts': ['Checking', 'Credit card', 'House', 'Mortgage',
-                                               'Opening balance', 'Savings']}
+    assert r[0]._data == {"Txn": 1, "Date": date(2021, 1, 1), "Account": "Checking",
+                          "Amount": Decimal(2500), 'Account depth': 2, "Description": None,
+                          'Fiscal month': 1, 'Fiscal year': 2021, 'Future date': False,
+                          'Hierarchy depth 1': 'Assets', 'Hierarchy depth 2': 'Checking',
+                          'Hierarchy depth 3': None, 'Last 182 days': True,
+                          'Last 30 days': True, 'Last 365 days': True, 'Last 91 days': True,
+                          'Month': 1, 'Parent': 'Assets', 'Year': 2021,
+                          'Txn accounts': ['Checking', 'Credit card', 'House', 'Mortgage',
+                                           'Opening balance', 'Savings']}
 
 
 def test_next_txn_id(accounts_file, txns_file):
@@ -55,14 +55,14 @@ def test_txn_extra2(accounts_file, txns_file):
                       tags={"Description": None}))
     r = j.postings_extra(ps=ps, today=date(2021, 1, 30))
     assert len(r) == 10
-    assert r[-1].to_dict() == {"Txn": 3, "Date": date(2021, 2, 1), "Account": "Savings",
-                               "Amount": Decimal(-2500), 'Account depth': 2, "Description": None,
-                               'Fiscal month': 2, 'Fiscal year': 2021, 'Future date': True,
-                               'Hierarchy depth 1': 'Assets', 'Hierarchy depth 2': 'Savings',
-                               'Hierarchy depth 3': None, 'Last 182 days': True,
-                               'Last 30 days': True, 'Last 365 days': True, 'Last 91 days': True,
-                               'Month': 2, 'Parent': 'Assets', 'Year': 2021,
-                               'Txn accounts': ['Checking', 'Savings']}
+    assert r[-1]._data == {"Txn": 3, "Date": date(2021, 2, 1), "Account": "Savings",
+                           "Amount": Decimal(-2500), 'Account depth': 2, "Description": None,
+                           'Fiscal month': 2, 'Fiscal year': 2021, 'Future date': True,
+                           'Hierarchy depth 1': 'Assets', 'Hierarchy depth 2': 'Savings',
+                           'Hierarchy depth 3': None, 'Last 182 days': True,
+                           'Last 30 days': True, 'Last 365 days': True, 'Last 91 days': True,
+                           'Month': 2, 'Parent': 'Assets', 'Year': 2021,
+                           'Txn accounts': ['Checking', 'Savings']}
 
 
 def test_empty_journal():
@@ -98,27 +98,27 @@ def test_no_txns(accounts_file):
                            [],
                            [{"Date": date(2016, 1, 1), "Account": "A", "Balance": 100}],
                            "Unknown account: A",),
-                          ([{"Account": "A"}, {"Account": "A"}],  # Duplicate account
+                          ([{"Name": "A"}, {"Name": "A"}],  # Duplicate account
                            [],
                            [],
                            "Duplicate account A"),
-                          ([{"Account": "A", "Parent": "A"}],  # Circular reference
+                          ([{"Name": "A", "Parent": "A"}],  # Circular reference
                            [],
                            [],
                            "Cycle in accounts: A -> A"),
                           # Circular reference
-                          ([{"Account": "A", "Parent": "B"}, {"Account": "B", "Parent": "A"}],
+                          ([{"Name": "A", "Parent": "B"}, {"Name": "B", "Parent": "A"}],
                            [],
                            [],
                            "Cycle in accounts: A -> B -> A"),
                           # Unbalanced transaction
-                          ([{"Account": "A", "Parent": None}, {"Account": "B", "Parent": "A"}],
+                          ([{"Name": "A", "Parent": None}, {"Name": "B", "Parent": "A"}],
                            [{"Txn": 1, "Date": date(2021, 1, 1), "Account": "A", "Amount": 100},
                             {"Txn": 1, "Date": date(2021, 1, 1), "Account": "B", "Amount": -99}],
                            [],
                            "Txn 1 is not balanced. Sum: 1"),
                           # Duplicate transaction number
-                          ([{"Account": "A", "Parent": None}, {"Account": "B", "Parent": "A"}],
+                          ([{"Name": "A", "Parent": None}, {"Name": "B", "Parent": "A"}],
                            [{"Txn": 1, "Date": date(2021, 1, 1), "Account": "A", "Amount": 100},
                             {"Txn": 1, "Date": date(2021, 1, 1), "Account": "B", "Amount": -100},
                             {"Txn": 1, "Date": date(2021, 1, 2), "Account": "A", "Amount": 20},
@@ -126,7 +126,7 @@ def test_no_txns(accounts_file):
                            [],
                            "Txn 1 has 2 dates"),
                           # Duplicate bassertion
-                          ([{"Account": "A"}],
+                          ([{"Name": "A"}],
                            [],
                            [{"Date": date(2016, 1, 1), "Account": "A", "Balance": 100},
                             {"Date": date(2016, 1, 1), "Account": "A", "Balance": 100}],

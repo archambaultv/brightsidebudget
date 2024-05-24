@@ -7,6 +7,18 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) wit
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
 
+## [0.2.0] - 2024-05-24
+### Added
+- Add a speedtest script to measure the performance of the library.
+
+### Changed
+- `Account`, `Posting`, `BAssertion` classes are now `MutableMapping` and by
+  default don't recopy the data when creating a new instance from a dictionary.
+- Attribute `identifier` of `Account` is now a `name`
+- The `postings_extra` is now 50% faster.
+- The `journal` class now only computes balances on demand and not all at once
+  during initialization.
+
 ## [0.1.5] - 2024-05-21
 ### Fixed
 - Fixed a bug in `read_bank_csv` when the amount column was empty instead of 0.

@@ -2,8 +2,7 @@ import csv
 from decimal import Decimal
 from io import StringIO
 from typing import Callable, Union
-
-from brightsidebudget.journal import Journal, Posting, mk_tags
+from brightsidebudget.journal import Journal, Posting
 
 
 def read_bank_csv(file: str, account: str, date_col: str,
@@ -41,6 +40,7 @@ def read_bank_csv(file: str, account: str, date_col: str,
         for _ in range(skiprows):
             next(f)
         for i, row in enumerate(csv.DictReader(f, **dictreader_args), start=1):
+            dt = row[date_col]
             if amount_col:
                 amnt = row[amount_col] if row[amount_col] else "0"
             else:
@@ -49,8 +49,10 @@ def read_bank_csv(file: str, account: str, date_col: str,
                 amnt_in = Decimal(in_col)
                 amnt_out = Decimal(out_col)
                 amnt = amnt_in - amnt_out
-            tags = mk_tags(row, reserved=[date_col, amount_col, amount_in_col, amount_out_col])
-            p = Posting(txn=i, account=account, date=row[date_col], amount=amnt, tags=tags)
+            for k in [date_col, amount_col, amount_in_col, amount_out_col]:
+                if k in row:
+                    del row[k]
+            p = Posting(txn=i, account=account, date=dt, amount=amnt, tags=row)
             ps.append(p)
     return ps
 
@@ -86,13 +88,15 @@ def balance_posting(bank_csv: list[Posting],
             txns.append([])
             continue
         total = sum(x[1] for x in other_accounts)
-        if total != -p.amount:
+        if total != -p.amount():
             raise Exception(f"Balancing failed for {p}. Total: {total}")
 
         ps = [p]
         for acc, amount in other_accounts:
-            ps.append(Posting(txn=p.txn, account=acc, amount=amount, date=p.date,
-                              tags=p.tags.copy()))
+            p2 = p.copy()
+            p2["Account"] = acc
+            p2["Amount"] = amount
+            ps.append(p2)
 
         txns.append(ps)
     if flat:

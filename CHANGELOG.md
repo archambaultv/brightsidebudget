@@ -13,7 +13,7 @@ the exception that the versions 0.*.* may have breaking changes in minor version
 ### Changed
 - `Account`, `Posting`, `BAssertion` classes are now `MutableMapping` and by
   default don't recopy the data when creating a new instance from a dictionary.
-- Attribute `identifier` of `Account` is now a `Name`
+- Attribute `identifier` of `Account` is now a `name`
 - The `postings_extra` is now 50% faster.
 
 ## [0.1.4] - 2024-05-21

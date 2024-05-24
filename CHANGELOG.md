@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
+
 ## [0.2.0] - 2024-05-24
 ### Added
 - Add a speedtest script to measure the performance of the library.
@@ -17,6 +18,11 @@ the exception that the versions 0.*.* may have breaking changes in minor version
 - The `postings_extra` is now 50% faster.
 - The `journal` class now only computes balances on demand and not all at once
   during initialization.
+
+## [0.1.5] - 2024-05-21
+### Fixed
+- Fixed a bug in `read_bank_csv` when the amount column was empty instead of 0.
+
 
 ## [0.1.4] - 2024-05-21
 ### Fixed

@@ -42,13 +42,12 @@ def read_bank_csv(file: str, account: str, date_col: str,
         for i, row in enumerate(csv.DictReader(f, **dictreader_args), start=1):
             dt = row[date_col]
             if amount_col:
-                amnt = row[amount_col]
+                amnt = row[amount_col] if row[amount_col] else "0"
             else:
-                try:
-                    amnt_in = Decimal(row[amount_in_col])
-                except Exception as e:
-                    raise e
-                amnt_out = Decimal(row[amount_out_col])
+                in_col = row[amount_in_col] if row[amount_in_col] else "0"
+                out_col = row[amount_out_col] if row[amount_out_col] else "0"
+                amnt_in = Decimal(in_col)
+                amnt_out = Decimal(out_col)
                 amnt = amnt_in - amnt_out
             for k in [date_col, amount_col, amount_in_col, amount_out_col]:
                 if k in row:

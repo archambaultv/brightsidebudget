@@ -9,9 +9,14 @@ def test_read_bank_csv(bank_checking_file):
 
 
 def test_remove_delemiter_from(bank_checking_err_delimiter):
-    #  Date,Description,Category,Debit,Credit,Balance
     ps = read_bank_csv(bank_checking_err_delimiter, "Checking", date_col="Date",
                        remove_delimiter_from="Internet, transfert",
+                       amount_in_col="Credit", amount_out_col="Debit")
+    assert len(ps) == 5
+
+
+def test_bank_checking_empty_amnt_col(bank_checking_empty_amnt_col):
+    ps = read_bank_csv(bank_checking_empty_amnt_col, "Checking", date_col="Date",
                        amount_in_col="Credit", amount_out_col="Debit")
     assert len(ps) == 5
 

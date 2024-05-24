@@ -613,27 +613,24 @@ class Journal():
             extra = PostingExtraTags()
         if extra.account_tags:
             accs = self.accounts_extra(extra=extra.account_tags_extra)
-            accs_id = {a.name(): a for a in accs}
-            for p in ps:
-                d = accs_id[p.account()]
-                p.update(d)
+            accs_extra_by_name = {a.name(): a for a in accs}
+        ffm = extra.first_fiscal_month
+        for p in ps:
+            if extra.account_tags:
+                d = accs_extra_by_name[p.account()]
+                p.update(d._data)
                 del p["Name"]  # Already in the account field
-        if extra.future_date:
-            for p in ps:
+            if extra.future_date:
                 p[extra.future_date_tag] = p.date() > today
-        if extra.last_x_days:
-            for p in ps:
+            if extra.last_x_days:
                 dt = p.date()
                 for x in extra.last_x_days:
                     p[extra.last_x_days_tag_format.format(x)] = dt > today - timedelta(days=x)
-        if extra.year:
-            for p in ps:
+            if extra.year:
                 p[extra.year_tag] = p.date().year
-        if extra.month:
-            for p in ps:
+            if extra.month:
                 p[extra.month_tag] = p.date().month
-        if extra.txn_accounts:
-            for p in ps:
+            if extra.txn_accounts:
                 txn_id = p.txn()
                 p[extra.txn_accounts_tag] = sorted({x.account()
                                                     for x in ps_by_id[txn_id]})
@@ -641,15 +638,13 @@ class Journal():
                     p[extra.txn_accounts_tag] = (extra
                                                  .txn_accounts_join
                                                  .join(p[extra.txn_accounts_tag]))
-        ffm = extra.first_fiscal_month
-        if extra.fiscal_year:
-            for p in ps:
+
+            if extra.fiscal_year:
                 if p.date().month >= ffm:
                     p[extra.fiscal_year_tag] = p.date().year
                 else:
                     p[extra.fiscal_year_tag] = p.date().year - 1
-        if extra.fiscal_month:
-            for p in ps:
+            if extra.fiscal_month:
                 p[extra.fiscal_month_tag] = ((p.date().month - ffm) % 12) + 1
         return ps
 

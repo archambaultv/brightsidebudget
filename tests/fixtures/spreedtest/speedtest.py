@@ -63,4 +63,4 @@ if __name__ == '__main__':
     t_extra = timeit.timeit(bsb_postings_extra, number=1)
     print(f"bsb_postings_extra: {t_extra:.2f} seconds")
 
-    print(f"Total time: {t_cvs + t_bsb + t_bassertions + t_extra:.2f} seconds")
+    print(f"Total bsb time: {t_bsb + t_bassertions + t_extra:.2f} seconds")

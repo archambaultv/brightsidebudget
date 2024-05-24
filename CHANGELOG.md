@@ -15,6 +15,8 @@ the exception that the versions 0.*.* may have breaking changes in minor version
   default don't recopy the data when creating a new instance from a dictionary.
 - Attribute `identifier` of `Account` is now a `name`
 - The `postings_extra` is now 50% faster.
+- The `journal` class now only computes balances on demand and not all at once
+  during initialization.
 
 ## [0.1.4] - 2024-05-21
 ### Fixed

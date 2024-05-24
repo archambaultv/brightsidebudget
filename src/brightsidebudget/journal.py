@@ -17,15 +17,15 @@ class Account(MutableMapping):
     Provides 'name' and 'parent' methods for convenience.
     """
     def __init__(self, name: str, parent: str = None, tags: dict = None):
-        self._data = tags if tags is not None else {}
+        self._data = tags.copy() if tags is not None else {}
         self._data["Name"] = name
         self._data["Parent"] = parent
         self._check_name_parent()
 
-    def name(self):
+    def name(self) -> str:
         return self._data["Name"]
 
-    def parent(self):
+    def parent(self) -> str:
         return self._data["Parent"]
 
     def __getitem__(self, key):
@@ -103,23 +103,23 @@ class Posting(MutableMapping):
     """
     def __init__(self, txn: int, date: date, account: str, amount: Decimal,
                  tags: dict = None):
-        self._data = tags if tags is not None else {}
+        self._data = tags.copy() if tags is not None else {}
         self._data["Txn"] = txn
         self._data["Date"] = date
         self._data["Account"] = account
         self._data["Amount"] = amount
         self._cast_txn_date_amount()
 
-    def txn(self):
+    def txn(self) -> int:
         return self._data["Txn"]
 
-    def date(self):
+    def date(self) -> date:
         return self._data["Date"]
 
-    def account(self):
+    def account(self) -> str:
         return self._data["Account"]
 
-    def amount(self):
+    def amount(self) -> Decimal:
         return self._data["Amount"]
 
     def __str__(self):
@@ -204,23 +204,23 @@ class BAssertion(MutableMapping):
     """
     def __init__(self, dt: date, account: str, balance: Decimal, include_children: bool = True,
                  tags: dict = None):
-        self._data = tags if tags is not None else {}
+        self._data = tags.copy() if tags is not None else {}
         self._data["Date"] = dt
         self._data["Account"] = account
         self._data["Balance"] = balance
         self._data["Include children"] = include_children
         self._cast_date_amount()
 
-    def date(self):
+    def date(self) -> date:
         return self._data["Date"]
 
-    def account(self):
+    def account(self) -> str:
         return self._data["Account"]
 
-    def balance(self):
+    def balance(self) -> Decimal:
         return self._data["Balance"]
 
-    def include_children(self):
+    def include_children(self) -> bool:
         return self._data["Include children"]
 
     def __str__(self):
@@ -360,12 +360,12 @@ class Journal():
         self.postings_by_txn: dict[int, list[Posting]] = None
         self.postings_by_acc: dict[str, list[Posting]] = None
         # Balances is a dict of dicts. The outer dict is indexed by account
-        # identifier and the inner dict is indexed by date. The value is a list
-        # [flow, balance] where flow is the sum of all postings on that date and
-        # balance is the sum of all postings up to that date.
-        self.balances: dict[str, dict[date, list[Decimal]]] = None
-        self.min_date: date = None
-        self.max_date: date = None
+        # identifier and the inner dict is indexed by date. The inner dict value
+        # is a tuple (flow, balance) where flow is the sum of all postings on
+        # that date and balance is the sum of all postings up to that date. The
+        # inner dict contains all dates between the first and last dates that
+        # are recorded with the inner dict.
+        self.balances: dict[str, tuple[date, date, dict[date, tuple[Decimal, Decimal]]]] = {}
         self.bassertions_by_acc: dict[str, list[BAssertion]] = None
 
         self._init()
@@ -381,10 +381,11 @@ class Journal():
         for acc in self.accounts:
             self.accounts_graph.add_node(acc.name(), account=acc)
         for acc in self.accounts:
-            if acc.parent():
-                if acc.parent() not in self.accounts_graph:
-                    raise ValueError(f"Unknown parent: {acc.parent()}")
-                self.accounts_graph.add_edge(acc.parent(), acc.name())
+            p = acc.parent()
+            if p:
+                if p not in self.accounts_graph:
+                    raise ValueError(f"Unknown parent: {p}")
+                self.accounts_graph.add_edge(p, acc.name())
         if not nx.is_directed_acyclic_graph(self.accounts_graph):
             cycle = nx.find_cycle(self.accounts_graph)
             msg = " -> ".join([x for x, _ in cycle])
@@ -433,35 +434,38 @@ class Journal():
                 raise ValueError(f"Duplicate bassertion: {ba.date()} {ba.account()}")
             seen.add((ba.date(), ba.account()))
 
-        # Compute balances
-        self.min_date = min([t.date() for t in self.postings], default=None)
-        self.max_date = max([t.date() for t in self.postings], default=None)
-        self.balances = {acc.name(): {} for acc in self.accounts}
-        if self.min_date is not None:
-            dates = [(self.min_date + timedelta(days=x))
-                     for x in range((self.max_date - self.min_date).days + 1)]
-            # To make our lives easier, we add all dates to all accounts. Since
-            # there is only 365 days in a year and no one keeps 10 000 years of
-            # financial records, this is not a big deal. The alternative would be
-            # to use a SortedDict
-            for acc in self.accounts:
-                xs = self.balances[acc.name()]
-                for d in dates:
-                    xs[d] = [Decimal("0"), Decimal("0")]
-            # Compute flow
-            for t in self.postings:
-                self.balances[t.account()][t.date()][0] += t.amount()
-            # Compute balance
-            for v in self.balances.values():
-                total = Decimal("0")
-                for d in dates:
-                    total += v[d][0]
-                    v[d][1] = total
-
         # Compute bassertions_by_acc
         self.bassertions_by_acc = {acc.name(): [] for acc in self.accounts}
         for ba in self.bassertions:
             self.bassertions_by_acc[ba.account()].append(ba)
+
+    def _init_balance(self, account: str) -> tuple[date, date, dict[date, tuple[Decimal, Decimal]]]:
+        ps = self.postings_by_acc[account]
+        if not ps:
+            return (None, None, {})
+        min_date = min(t.date() for t in ps)
+        max_date = max(t.date() for t in ps)
+
+        # To make our lives easier, we add all dates to all accounts. Since
+        # there is only 365 days in a year and no one keeps 10 000 years of
+        # financial records, this is not a big deal. The alternative would be
+        # to use a SortedDict
+        xs = dict((min_date + timedelta(days=x), Decimal("0"))
+                  for x in range((max_date - min_date).days + 1))
+
+        # Compute flow
+        for p in ps:
+            xs[p.date()] += p.amount()
+
+        # Compute balance
+        total = Decimal("0")
+        for d, v in xs.items():
+            total += v
+            xs[d] = (v, total)
+
+        self.balances[account] = (min_date, max_date, xs)
+
+        return (min_date, max_date, xs)
 
     def check_bassertions(self) -> list[BAssertionFail]:
         err = []
@@ -497,25 +501,33 @@ class Journal():
         return [p1, p2]
 
     def balance(self, account: str, date: date, include_children: bool = True) -> Decimal:
-        if self.min_date is None or date < self.min_date:
+        if account not in self.balances:
+            (min_date, max_date, d) = self._init_balance(account)
+        else:
+            (min_date, max_date, d) = self.balances[account]
+        if min_date is None or date < min_date:
             return Decimal("0")
-        if date > self.max_date:
-            date = self.max_date
-        total = self.balances[account][date][1]
+        if date > max_date:
+            date = max_date
+        total = d[date][1]
         if include_children:
-            for c in nx.descendants(self.accounts_graph, account):
-                total += self.balances[c][date][1]
+            for c in self.accounts_graph.successors(account):
+                total += self.balance(c, date, include_children=True)
         return total
 
     def flow(self, account: str, date: date, include_children: bool = True) -> Decimal:
-        if self.min_date is None or date < self.min_date:
+        if account not in self.balances:
+            (min_date, max_date, d) = self._init_balance(account)
+        else:
+            (min_date, max_date, d) = self.balances[account]
+        if min_date is None or date < min_date:
             return Decimal("0")
-        if date > self.max_date:
+        if date > max_date:
             return Decimal("0")
-        total = self.balances[account][date][0]
+        total = d[date][0]
         if include_children:
-            for c in nx.descendants(self.accounts_graph, account):
-                total += self.balances[c][date][0]
+            for c in self.accounts_graph.successors(account):
+                total += self.flow(c, date, include_children=True)
         return total
 
     def root(self, account: str) -> Account:

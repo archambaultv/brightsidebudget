@@ -7,6 +7,11 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) wit
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
 
+## [0.2.1] - 2024-05-24
+### Removed
+- Removed `auto_balance` method of `Journal` class as it was not ready for
+  production.
+
 ## [0.2.0] - 2024-05-24
 ### Added
 - Add a speedtest script to measure the performance of the library.

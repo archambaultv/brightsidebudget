@@ -476,30 +476,6 @@ class Journal():
                 err.append(BAssertionFail(bassertion=ba, actual_balance=actual_balance))
         return err
 
-    def auto_balance(self, bassertion: Union[BAssertion, BAssertionFail],
-                     balance_with: str) -> list[Posting]:
-        """
-        Create a pair of postings that balance the account.
-        Returns an empty list if the account is already balanced.
-        """
-        if isinstance(bassertion, BAssertionFail):
-            if bassertion.diff() == Decimal("0"):
-                return []
-            b = bassertion.bassertion
-            p1 = Posting(txn=self.next_txn_id(), date=b.date(), account=b.account(),
-                         amount=bassertion.diff())
-        else:
-            actual_balance = self.balance(bassertion.account(), bassertion.date(),
-                                          bassertion.include_children())
-            diff = bassertion.balance() - actual_balance
-            if diff == Decimal("0"):
-                return []
-            p1 = Posting(txn=self.next_txn_id(), date=bassertion.date(),
-                         account=bassertion.account(), amount=diff)
-        p2 = Posting(txn=p1.txn(), date=p1.date(), account=balance_with,
-                     amount=-p1.amount())
-        return [p1, p2]
-
     def balance(self, account: str, date: date, include_children: bool = True) -> Decimal:
         if account not in self.balances:
             (min_date, max_date, d) = self._init_balance(account)

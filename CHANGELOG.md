@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
+## Unreleased
+### Added
+- Add a speedtest script to measure the performance of the library.
+
+### Changed
+- `Account`, `Posting`, `BAssertion` classes are now `MutableMapping` and by
+  default don't recopy the data when creating a new instance from a dictionary.
+- Attribute `identifier` of `Account` is now a `Name`
+
 ## [0.1.4] - 2024-05-21
 ### Fixed
 - Fixed a bug in `read_bank_csv` when using the `remove_delimiter_from` parameter.

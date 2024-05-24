@@ -15,7 +15,7 @@ def lint(session):
 
 
 # Speed test, not enabled by default
-@nox.session(python="3.12", default=False)
+@nox.session(python=["3.9", "3.12"], default=False)
 def speedtest(session):
     session.install(".")
     session.run("python", "./tests/fixtures/spreedtest/speedtest.py")

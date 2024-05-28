@@ -9,13 +9,13 @@ from brightsidebudget import Account
                           {"Name": "A"},
                           {"Name": "A", "desc": "My account A"}])
 def test_from_dict(d: dict):
-    account = Account.from_dict(d)
+    account = Account.from_dict(d, copy=True)
     assert account.name() == d["Name"]
     if "Parent" in d:
         assert account.parent() == d["Parent"]
-    for k, v in d.items():
-        if k not in ["Name", "Parent"]:
-            assert account[k] == v
+    else:
+        d["Parent"] = None
+    assert account.get_dict() == d
 
 
 @pytest.mark.parametrize("d",

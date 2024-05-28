@@ -9,21 +9,22 @@ from brightsidebudget import Posting
                          [{"Txn": 1, "Date": "2021-01-01", "Account": "A", "Amount": 100},
                           {"Txn": "1", "Date": date(2021, 1, 1), "Account": "A", "Amount": -100,
                            "desc": "My transaction"},
-                          {"Txn": 1, "Date": "2021-01-01", "Account": "A", "Amount": 100.04,
+                          {"Txn": 1, "Date": "2021-01-01", "Account": "A", "Amount": "100.04",
                            "date2": date(2021, 1, 1)},
                           {"Txn": 1, "Date": "2021-01-01", "Account": "A",
                            "Amount": 100.0145, "date2": date(2021, 1, 1), "payee": "ABC Corp"},
                           {"Txn": 1, "Date": "2021-01-01", "Account": "A", "Amount": 100,
                            "date2": date(2021, 1, 1)}])
 def test_posting_from_dict(d: dict):
-    p = Posting.from_dict(d)
+    p = Posting.from_dict(d, copy=True)
+    d["Amount"] = Decimal(str(d["Amount"]))
+    d["Date"] = date(2021, 1, 1)
+    d["Txn"] = int(d["Txn"])
     assert p.account() == "A"
-    assert p.amount() == Decimal(str(d["Amount"]))
+    assert p.amount() == d["Amount"]
     assert p.txn() == 1
     assert p.date() == date(2021, 1, 1)
-    for k, v in d.items():
-        if k not in ["Account", "Amount", "Txn", "Date"]:
-            assert p[k] == v
+    assert p.get_dict() == d
 
 
 @pytest.mark.parametrize("d",

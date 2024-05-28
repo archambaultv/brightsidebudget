@@ -68,6 +68,13 @@ class Account(MutableMapping):
         a._data = self._data.copy()
         return a
 
+    def get_dict(self) -> dict:
+        """
+        Return the underlying dictionary.
+        Any changes to the dictionary will affect the account.
+        """
+        return self._data
+
     def _check_name_parent(self):
         if not isinstance(self._data["Name"], str):
             raise ValueError("Name must be a string")
@@ -187,6 +194,13 @@ class Posting(MutableMapping):
         p._cast_txn_date_amount()
         return p
 
+    def get_dict(self) -> dict:
+        """
+        Return the underlying dictionary.
+        Any changes to the dictionary will affect the posting.
+        """
+        return self._data
+
     def _cast_txn_date_amount(self):
         if not isinstance(self._data["Txn"], int):
             self._data["Txn"] = int(self._data["Txn"])
@@ -286,6 +300,17 @@ class BAssertion(MutableMapping):
             self._data["Balance"] = Decimal(str(self._data["Balance"]))
         if not isinstance(self._data["Date"], date):
             self._data["Date"] = date.fromisoformat(self._data["Date"])
+        if not isinstance(self._data["Include children"], bool):
+            if self._data["Include children"] in ["True", "False"]:
+                self._data["Include children"] = self._data["Include children"] == "True"
+            self._data["Include children"] = bool(self._data["Include children"])
+
+    def get_dict(self) -> dict:
+        """
+        Return the underlying dictionary.
+        Any changes to the dictionary will affect the balance assertion.
+        """
+        return self._data
 
 
 class BAssertionFail():

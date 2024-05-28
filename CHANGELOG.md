@@ -10,6 +10,9 @@ the exception that the versions 0.*.* may have breaking changes in minor version
 ### Added
 - Add a `get_dict` method to MutableMapping classes to get the underlying dictionary.
 
+### Changed
+- `Account`, `Posting`, `BAssertion` classes now have writable attributes.
+
 ## [0.2.1] - 2024-05-24
 ### Removed
 - Removed `auto_balance` method of `Journal` class as it was not ready for

@@ -88,7 +88,7 @@ def balance_posting(bank_csv: list[Posting],
             txns.append([])
             continue
         total = sum(x[1] for x in other_accounts)
-        if total != -p.amount():
+        if total != -p.amount:
             raise Exception(f"Balancing failed for {p}. Total: {total}")
 
         ps = [p]

@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
+## [Unreleased]
+### Added
+- Add a `get_dict` method to MutableMapping classes to get the underlying dictionary.
+
+### Changed
+- `Account`, `Posting`, `BAssertion` classes now have writable attributes.
 
 ## [0.2.1] - 2024-05-24
 ### Removed

@@ -42,7 +42,7 @@ def bsb_check_bassertions():
 
 
 def bsb_postings_extra():
-    today = j.postings[-1].date()
+    today = j.postings[-1].date
     j.postings_extra(today=today)
 
 

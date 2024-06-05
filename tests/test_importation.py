@@ -36,9 +36,9 @@ def test_balance_posting(bank_checking_file):
 
     def foo(p: Posting):
         if p["Description"] == "Super market":
-            return [("Food", -p.amount())]
+            return [("Food", -p.amount)]
         else:
-            return [("Other expenses", -p.amount())]
+            return [("Other expenses", -p.amount)]
 
     ps2 = balance_posting(ps, foo)
     assert len(ps2) == 5

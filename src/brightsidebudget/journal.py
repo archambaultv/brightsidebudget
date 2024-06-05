@@ -14,7 +14,7 @@ class Account(MutableMapping):
     """
     A dictionary-like object that represents an account.
     The key 'Name' and 'Parent' are always present.
-    Provides 'name' and 'parent' methods for convenience.
+    Provides 'name' and 'parent' attributes for convenience.
     """
     def __init__(self, name: str, parent: str = None, tags: dict = None):
         self._data = tags.copy() if tags is not None else {}
@@ -129,7 +129,7 @@ class Posting(MutableMapping):
     """
     A dictionary-like object that represents a posting.
     The key 'Txn', 'Date', 'Account' and 'Amount' are always present.
-    Provides 'txn', 'date', 'account' and 'amount' methods for convenience.
+    Provides 'txn', 'date', 'account' and 'amount' attributes for convenience.
     """
     def __init__(self, txn: int, date: date, account: str, amount: Decimal,
                  tags: dict = None):
@@ -285,7 +285,7 @@ class BAssertion(MutableMapping):
     """
     A dictionary-like object that represents a balance assertion.
     The key 'Date', 'Account', 'Balance' and 'Include children"' are always present.
-    Provides 'date', 'account', 'balance' and 'include_children' methods for convenience.
+    Provides 'date', 'account', 'balance' and 'include_children' attributes for convenience.
     """
     def __init__(self, date: date, account: str, balance: Decimal, include_children: bool = True,
                  tags: dict = None):

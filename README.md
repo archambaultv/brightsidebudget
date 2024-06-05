@@ -1,7 +1,7 @@
 # Brightside Budget
 🎶 Always look on the bright side of your finance 🎶
 
-Brightside budget is my personal python library to manage my personal finance.
+Brightside budget is my personal python library to manage my finance.
 
 ## Overview of the library
 The data is stored in CVS files and the library provides a `Journal` class. The

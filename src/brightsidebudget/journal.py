@@ -503,13 +503,12 @@ class Journal():
         self.roots: list[Account] = None
         self.postings_by_txn: dict[int, list[Posting]] = None
         self.postings_by_acc: dict[str, list[Posting]] = None
-        # Balances is a dict of dicts. The outer dict is indexed by account
-        # identifier and the inner dict is indexed by date. The inner dict value
-        # is a tuple (flow, balance) where flow is the sum of all postings on
-        # that date and balance is the sum of all postings up to that date. The
-        # inner dict contains all dates between the first and last dates that
-        # are recorded with the inner dict.
-        self.balances: dict[str, tuple[date, date, dict[date, tuple[Decimal, Decimal]]]] = {}
+        # Dictionary of account daily flow and balance. For each account we
+        # store the minimum date, the maximum index where the balance is valid
+        # and a list of tuples with the daily flow and balance. The balance can
+        # become invalid when a posting is added to the account. It will be
+        # recomputed when needed.
+        self.balances: dict[str, tuple[date, int, list[tuple[Decimal, Decimal]]]] = None
         self.bassertions_by_acc: dict[str, list[BAssertion]] = None
 
         self._init()
@@ -578,38 +577,58 @@ class Journal():
                 raise ValueError(f"Duplicate bassertion: {ba.date} {ba.account}")
             seen.add((ba.date, ba.account))
 
+        # Initialize balances
+        self.balances = {}
+        for acc in self.accounts:
+            self.balances[acc.name] = (None, None, None)
+
         # Compute bassertions_by_acc
         self.bassertions_by_acc = {acc.name: [] for acc in self.accounts}
         for ba in self.bassertions:
             self.bassertions_by_acc[ba.account].append(ba)
 
-    def _init_balance(self, account: str) -> tuple[date, date, dict[date, tuple[Decimal, Decimal]]]:
+    def _init_balance(self, account: str) -> tuple[date, int, list[tuple[Decimal, Decimal]]]:
         ps = self.postings_by_acc[account]
         if not ps:
-            return (None, None, {})
+            return (None, None, [])
         min_date = min(t.date for t in ps)
+        min_date = date(min_date.year, 1, 1)
         max_date = max(t.date for t in ps)
+        max_date = date(max_date.year, 12, 31)
 
-        # To make our lives easier, we add all dates to all accounts. Since
-        # there is only 365 days in a year and no one keeps 10 000 years of
-        # financial records, this is not a big deal. The alternative would be
-        # to use a SortedDict
-        xs = dict((min_date + timedelta(days=x), Decimal("0"))
-                  for x in range((max_date - min_date).days + 1))
+        # To make our lives easier, we add all dates. Since there is only 365
+        # days in a year and no one keeps 10 000 years of financial records,
+        # this is not a big deal.
+
+        xs = [Decimal("0") for _ in range((max_date - min_date).days + 1)]
 
         # Compute flow
         for p in ps:
-            xs[p.date] += p.amount
+            idx = (p.date - min_date).days
+            xs[idx] += p.amount
 
         # Compute balance
         total = Decimal("0")
-        for d, v in xs.items():
+        for idx, v in enumerate(xs):
             total += v
-            xs[d] = (v, total)
+            xs[idx] = (v, total)
 
-        self.balances[account] = (min_date, max_date, xs)
+        self.balances[account] = (min_date, len(xs) - 1, xs)
 
-        return (min_date, max_date, xs)
+        return (min_date, len(xs) - 1, xs)
+
+    def _recompute_balance(self, account: str) -> list[tuple[Decimal, Decimal]]:
+        (min_date, max_bal_idx, xs) = self.balances[account]
+
+        total = xs[max_bal_idx][1]
+        start_idx = max_bal_idx + 1
+        for idx, v in enumerate(xs[start_idx:], start=start_idx):
+            total += v
+            xs[idx] = (v, total)
+
+        self.balances[account] = (min_date, len(xs) - 1, xs)
+
+        return xs
 
     def check_bassertions(self) -> list[BAssertionFail]:
         err = []
@@ -621,30 +640,38 @@ class Journal():
         return err
 
     def balance(self, account: str, date: date, include_children: bool = True) -> Decimal:
-        if account not in self.balances:
-            (min_date, max_date, d) = self._init_balance(account)
-        else:
-            (min_date, max_date, d) = self.balances[account]
+        (min_date, max_bal_idx, xs) = self.balances[account]
+        if xs is None:
+            (min_date, max_bal_idx, xs) = self._init_balance(account)
+
         if min_date is None or date < min_date:
-            return Decimal("0")
-        if date > max_date:
-            date = max_date
-        total = d[date][1]
+            total = Decimal("0")
+        else:
+            idx = (date - min_date).days
+            if idx >= len(xs):
+                idx = len(xs) - 1
+            if idx > max_bal_idx:
+                xs = self._recompute_balance(account)
+            total = xs[idx][1]
+
         if include_children:
             for c in self.accounts_graph.successors(account):
                 total += self.balance(c, date, include_children=True)
         return total
 
     def flow(self, account: str, date: date, include_children: bool = True) -> Decimal:
-        if account not in self.balances:
-            (min_date, max_date, d) = self._init_balance(account)
-        else:
-            (min_date, max_date, d) = self.balances[account]
+        (min_date, _, xs) = self.balances[account]
+        if xs is None:
+            (min_date, _, xs) = self._init_balance(account)
+
         if min_date is None or date < min_date:
-            return Decimal("0")
-        if date > max_date:
-            return Decimal("0")
-        total = d[date][0]
+            total = Decimal("0")
+        else:
+            idx = (date - min_date).days
+            if idx >= len(xs):
+                total = Decimal("0")
+            else:
+                total = xs[idx][0]
         if include_children:
             for c in self.accounts_graph.successors(account):
                 total += self.flow(c, date, include_children=True)

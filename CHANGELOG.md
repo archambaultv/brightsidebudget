@@ -6,7 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
-## [Unreleased]
+## [0.3.1] - 2024-06-26
+### Fixed
+- Fixed a bug in `postings_extra` when computing the fiscal year of a transaction.
+
+## [0.3.0] - 2024-06-05
 ### Added
 - Add a `get_dict` method to MutableMapping classes to get the underlying dictionary.
 

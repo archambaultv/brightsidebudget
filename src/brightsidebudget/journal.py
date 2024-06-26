@@ -787,10 +787,10 @@ class Journal():
                                                  .join(p[extra.txn_accounts_tag]))
 
             if extra.fiscal_year:
-                if p.date.month >= ffm:
+                if ffm == 1 or p.date.month < ffm:
                     p[extra.fiscal_year_tag] = p.date.year
                 else:
-                    p[extra.fiscal_year_tag] = p.date.year - 1
+                    p[extra.fiscal_year_tag] = p.date.year + 1
             if extra.fiscal_month:
                 p[extra.fiscal_month_tag] = ((p.date.month - ffm) % 12) + 1
         return ps

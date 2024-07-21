@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
+## [0.4.1]
+### Fixed
+- Fixed default value of optional parameter in `export_for_excel` method of
+  `Journal` class to be `None` instead of `[]`.
+
 ## [0.4.0]
 ### Changed
 - Major refactoring of the library. Most classes have changed and the API is not

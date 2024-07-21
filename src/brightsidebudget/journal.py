@@ -480,7 +480,7 @@ class Journal():
                          file: str = "txns.csv",
                          use_short_qname: bool = True,
                          encoding="utf8",
-                         aliases: list[tuple[str, dict[QName, QName]]] = [],
+                         aliases: list[tuple[str, dict[QName, QName]]] | None = None,
                          today: Union[date, None] = None,
                          first_fiscal_month: int = 1):
         """
@@ -488,6 +488,9 @@ class Journal():
         """
         if today is None:
             today = date.today()
+
+        if aliases is None:
+            aliases = []
 
         ps = [p.copy() for p in self.postings]
         for p in ps:

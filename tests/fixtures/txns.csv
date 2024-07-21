@@ -1,4 +1,4 @@
-Txn,Date,Account,Amount,Description
+Txn,Date,Compte,Montant,Description du relevé
 1,2021-01-01,Checking,2500
 1,2021-01-01,Savings,15000
 1,2021-01-01,Credit card,-1500

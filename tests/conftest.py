@@ -12,23 +12,8 @@ def bank_checking_file() -> str:
 
 
 @pytest.fixture()
-def bank_checking_err_delimiter() -> str:
-    return "tests/fixtures/bank_checking_err_delimiter.csv"
-
-
-@pytest.fixture()
-def bank_checking_empty_amnt_col() -> str:
-    return "tests/fixtures/bank_checking_empty_amnt_col.csv"
-
-
-@pytest.fixture()
 def bassertions_file() -> str:
     return "tests/fixtures/bassertions.csv"
-
-
-@pytest.fixture()
-def budget_file() -> str:
-    return "tests/fixtures/budget.csv"
 
 
 @pytest.fixture()

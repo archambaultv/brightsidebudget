@@ -1,862 +1,641 @@
-
-from collections import defaultdict
-from collections.abc import MutableMapping
 import csv
-import networkx as nx
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
-from typing import Union
-
-from pydantic import BaseModel, Field
-
-
-class Account(MutableMapping):
-    """
-    A dictionary-like object that represents an account.
-    The key 'Name' and 'Parent' are always present.
-    Provides 'name' and 'parent' attributes for convenience.
-    """
-    def __init__(self, name: str, parent: str = None, tags: dict = None):
-        self._data = tags.copy() if tags is not None else {}
-        self._data["Name"] = name
-        self._data["Parent"] = parent
-        self._check_all()
-
-    @property
-    def name(self):
-        return self._data["Name"]
-
-    @name.setter
-    def name(self, value):
-        self._data["Name"] = value
-        self._check_name()
-
-    @property
-    def parent(self):
-        return self._data["Parent"]
-
-    @parent.setter
-    def parent(self, value):
-        self._data["Parent"] = value
-        self._check_parent()
-
-    def __getitem__(self, key):
-        return self._data[key]
-
-    def __setitem__(self, key, value):
-        self._data[key] = value
-        if key == "Name":
-            self._check_name()
-        if key == "Parent":
-            self._check_parent()
-
-    def __delitem__(self, key):
-        if key in ["Name", "Parent"]:
-            raise ValueError("Cannot delete {key} key")
-        del self._data[key]
-
-    def __iter__(self):
-        return iter(self._data)
-
-    def __len__(self):
-        return len(self._data)
-
-    def __str__(self):
-        return f"Account({self.name})"
-
-    def update(self, *args, **kwargs):
-        self._data.update(*args, **kwargs)
-        self._check_all()
-
-    def keys(self):
-        return self._data.keys()
-
-    def values(self):
-        return self._data.values()
-
-    def items(self):
-        return self._data.items()
-
-    def copy(self):
-        """
-        Return a shallow copy of the account.
-        """
-        a = Account.__new__(Account)
-        a._data = self._data.copy()
-        return a
-
-    def get_dict(self) -> dict:
-        """
-        Return the underlying dictionary.
-        Any changes to the dictionary will affect the account.
-        """
-        return self._data
-
-    def _check_all(self):
-        self._check_name()
-        self._check_parent()
-
-    def _check_parent(self):
-        if not isinstance(self._data["Parent"], (str, type(None))):
-            raise ValueError("Parent must be a string or None")
-        if self._data["Parent"] == "":
-            self._data["Parent"] = None
-
-    def _check_name(self):
-        if not isinstance(self._data["Name"], str):
-            raise ValueError("Name must be a string")
-        if self._data["Name"] == "":
-            raise ValueError("Name cannot be an empty string")
-
-    @classmethod
-    def from_dict(cls, d: dict, copy: bool = False) -> 'Account':
-        """
-        Create an account from a dictionary.
-        The 'Name' key is required.
-        If copy is True, a shallow copy of the dictionary is made.
-        """
-        if "Name" not in d:
-            raise ValueError("Missing Name key in account dict")
-        a = cls.__new__(cls)
-        a._data = d.copy() if copy else d
-        if "Parent" not in a._data:
-            a._data["Parent"] = None
-        a._check_all()
-        return a
-
-
-class Posting(MutableMapping):
-    """
-    A dictionary-like object that represents a posting.
-    The key 'Txn', 'Date', 'Account' and 'Amount' are always present.
-    Provides 'txn', 'date', 'account' and 'amount' attributes for convenience.
-    """
-    def __init__(self, txn: int, date: date, account: str, amount: Decimal,
-                 tags: dict = None):
-        self._data = tags.copy() if tags is not None else {}
-        self._data["Txn"] = txn
-        self._data["Date"] = date
-        self._data["Account"] = account
-        self._data["Amount"] = amount
-        self._check_all()
-
-    @property
-    def txn(self) -> int:
-        return self._data["Txn"]
-
-    @txn.setter
-    def txn(self, value: int):
-        self._data["Txn"] = value
-        self._check_txn()
-
-    @property
-    def date(self) -> date:
-        return self._data["Date"]
-
-    @date.setter
-    def date(self, value: date):
-        self._data["Date"] = value
-        self._check_date()
-
-    @property
-    def account(self) -> str:
-        return self._data["Account"]
-
-    @account.setter
-    def account(self, value: str):
-        self._data["Account"] = value
-        self._check_account()
-
-    @property
-    def amount(self) -> Decimal:
-        return self._data["Amount"]
-
-    @amount.setter
-    def amount(self, value: Decimal):
-        self._data["Amount"] = value
-        self._check_amount()
-
-    def __str__(self):
-        return f"Posting({self.txn}, {self.date}, {self.account}, {self.amount})"
-
-    def __getitem__(self, key):
-        return self._data[key]
-
-    def __setitem__(self, key, value):
-        self._data[key] = value
-        if key == "Txn":
-            self._check_txn()
-        if key == "Date":
-            self._check_date()
-        if key == "Account":
-            self._check_account()
-        if key == "Amount":
-            self._check_amount()
-
-    def __delitem__(self, key):
-        if key in ["Txn", "Date", "Account", "Amount"]:
-            raise ValueError(f"Cannot delete '{key}' key")
-        del self._data[key]
-
-    def __iter__(self):
-        return iter(self._data)
-
-    def __len__(self):
-        return len(self._data)
-
-    def update(self, *args, **kwargs):
-        self._data.update(*args, **kwargs)
-
-    def keys(self):
-        return self._data.keys()
-
-    def values(self):
-        return self._data.values()
-
-    def items(self):
-        return self._data.items()
-
-    def copy(self):
-        """
-        Return a shallow copy of the posting.
-        """
-        p = Posting.__new__(Posting)
-        p._data = self._data.copy()
-        return p
-
-    def fingerprint(self, tags: list[str] = None) -> tuple:
-        """
-        Return a tuple that represents the posting.
-        The tuple is used to compare postings and find duplicates.
-        """
-        if tags is None:
-            tags = []
-        return tuple([self.date, self.account, self.amount] +
-                     [self._data[k] for k in tags])
-
-    @classmethod
-    def from_dict(cls, d: dict, copy: bool = False) -> 'Posting':
-        """
-        Create a posting from a dictionary.
-        The 'Txn', 'Date', 'Account' and 'Amount' keys are required.
-        If copy is True, a shallow copy of the dictionary is made.
-        """
-        for k in ["Txn", "Date", "Account", "Amount"]:
-            if k not in d:
-                raise ValueError(f"Missing '{k}' key in posting dict")
-        p = cls.__new__(cls)
-        p._data = d.copy() if copy else d
-        p._check_all()
-        return p
-
-    def get_dict(self) -> dict:
-        """
-        Return the underlying dictionary.
-        Any changes to the dictionary will affect the posting.
-        """
-        return self._data
-
-    def _check_all(self):
-        self._check_account()
-        self._check_txn()
-        self._check_amount()
-        self._check_date()
-
-    def _check_account(self):
-        if not isinstance(self._data["Account"], str):
-            raise ValueError("Account must be a string")
-        if self._data["Account"] == "":
-            raise ValueError("Account cannot be an empty string")
-
-    def _check_date(self):
-        if not isinstance(self._data["Date"], date):
-            self._data["Date"] = date.fromisoformat(self._data["Date"])
-
-    def _check_amount(self):
-        if not isinstance(self._data["Amount"], Decimal):
-            self._data["Amount"] = Decimal(str(self._data["Amount"]))
-
-    def _check_txn(self):
-        if not isinstance(self._data["Txn"], int):
-            self._data["Txn"] = int(self._data["Txn"])
-
-
-class BAssertion(MutableMapping):
-    """
-    A dictionary-like object that represents a balance assertion.
-    The key 'Date', 'Account', 'Balance' and 'Include children"' are always present.
-    Provides 'date', 'account', 'balance' and 'include_children' attributes for convenience.
-    """
-    def __init__(self, date: date, account: str, balance: Decimal, include_children: bool = True,
-                 tags: dict = None):
-        self._data = tags.copy() if tags is not None else {}
-        self._data["Date"] = date
-        self._data["Account"] = account
-        self._data["Balance"] = balance
-        self._data["Include children"] = include_children
-        self._check_all()
-
-    @property
-    def date(self) -> date:
-        return self._data["Date"]
-
-    @date.setter
-    def date(self, value: date):
-        self._data["Date"] = value
-        self._check_date()
-
-    @property
-    def account(self) -> str:
-        return self._data["Account"]
-
-    @account.setter
-    def account(self, value: str):
-        self._data["Account"] = value
-        self._check_account()
-
-    @property
-    def balance(self) -> Decimal:
-        return self._data["Balance"]
-
-    @balance.setter
-    def balance(self, value: Decimal):
-        self._data["Balance"] = value
-        self._check_balance()
-
-    @property
-    def include_children(self) -> bool:
-        return self._data["Include children"]
-
-    @include_children.setter
-    def include_children(self, value: bool):
-        self._data["Include children"] = value
-        self._check_include_children()
-
-    def __str__(self):
-        return f"BAssertion({self.date}, {self.account}, {self.balance}, \
-                 {self.include_children})"
-
-    def __getitem__(self, key):
-        return self._data[key]
-
-    def __setitem__(self, key, value):
-        self._data[key] = value
-        if key == "Date":
-            self._check_date()
-        if key == "Account":
-            self._check_account()
-        if key == "Balance":
-            self._check_balance()
-        if key == "Include children":
-            self._check_include_children()
-
-    def __delitem__(self, key):
-        if key in ["Date", "Account", "Balance", "Include children"]:
-            raise ValueError(f"Cannot delete '{key}' key")
-        del self._data[key]
-
-    def __iter__(self):
-        return iter(self._data)
-
-    def __len__(self):
-        return len(self._data)
-
-    def update(self, *args, **kwargs):
-        self._data.update(*args, **kwargs)
-        self._check_all()
-
-    def keys(self):
-        return self._data.keys()
-
-    def values(self):
-        return self._data.values()
-
-    def items(self):
-        return self._data.items()
-
-    def copy(self):
-        """
-        Return a shallow copy of the balance assertion.
-        """
-        b = BAssertion.__new__(BAssertion)
-        b._data = self._data.copy()
-        return b
-
-    @classmethod
-    def from_dict(cls, d: dict, copy: bool = False) -> 'BAssertion':
-        """
-        Create a balance assertion from a dictionary.
-        The 'Date', 'Account' and 'Balance' keys are required.
-        If copy is True, a shallow copy of the dictionary is made.
-        """
-        for k in ["Date", "Account", "Balance"]:
-            if k not in d:
-                raise ValueError(f"Missing '{k}' key in balance assertion dict")
-        ba = cls.__new__(cls)
-        ba._data = d.copy() if copy else d
-        if "Include children" not in d:
-            ba._data["Include children"] = True
-        ba._check_all()
-        return ba
-
-    def _check_all(self):
-        self._check_account()
-        self._check_balance()
-        self._check_date()
-        self._check_include_children()
-
-    def _check_account(self):
-        if not isinstance(self._data["Account"], str):
-            raise ValueError("Account must be a string")
-        if self._data["Account"] == "":
-            raise ValueError("Account cannot be an empty string")
-
-    def _check_include_children(self):
-        if not isinstance(self._data["Include children"], bool):
-            if self._data["Include children"] in ["True", "False"]:
-                self._data["Include children"] = self._data["Include children"] == "True"
-
-    def _check_date(self):
-        if not isinstance(self._data["Date"], date):
-            self._data["Date"] = date.fromisoformat(self._data["Date"])
-
-    def _check_balance(self):
-        if not isinstance(self._data["Balance"], Decimal):
-            self._data["Balance"] = Decimal(str(self._data["Balance"]))
-
-    def get_dict(self) -> dict:
-        """
-        Return the underlying dictionary.
-        Any changes to the dictionary will affect the balance assertion.
-        """
-        return self._data
-
-
-class BAssertionFail():
-    def __init__(self, bassertion: BAssertion, actual_balance: Decimal):
-        self.bassertion = bassertion
-        self.actual_balance = actual_balance
-
-    def diff(self) -> Decimal:
-        """
-        The difference between the expected balance and the actual balance.
-        """
-        return self.bassertion.balance - self.actual_balance
-
-    def __str__(self):
-        return f"BAssertionFail({self.bassertion}, {self.actual_balance})"
-
-    def error_msg(self):
-        s = f"Balance of {self.bassertion.account} on {self.bassertion.date} is "
-        s += f"{self.actual_balance} instead of {self.bassertion.balance}. Diff: {self.diff()}"
-        return s
-
-
-class AccountExtraTags(BaseModel):
-    depth: bool = Field(default=True)
-    depth_tag: str = Field(min_length=1, default="Account depth")
-    depth_start: int = Field(ge=0, default=1)
-    hierarchy: bool = Field(default=True)
-    hierarchy_tag_format: str = Field(min_length=1, default="Hierarchy depth {}")
-
-    @staticmethod
-    def no_extras() -> 'AccountExtraTags':
-        return AccountExtraTags(depth=False, hierarchy=False)
-
-
-class PostingExtraTags(BaseModel):
-    account_tags: bool = Field(default=True)
-    account_tags_extra: AccountExtraTags = Field(default_factory=AccountExtraTags)
-    future_date: bool = Field(default=True)
-    future_date_tag: str = Field(min_length=1, default="Future date")
-    last_x_days: list[int] = Field(default_factory=lambda: [30, 91, 182, 365])
-    last_x_days_tag_format: str = Field(min_length=1, default="Last {} days")
-    year: bool = Field(default=True)
-    year_tag: str = Field(min_length=1, default="Year")
-    month: bool = Field(default=True)
-    month_tag: str = Field(min_length=1, default="Month")
-    txn_accounts: bool = Field(default=True)
-    txn_accounts_tag: str = Field(min_length=1, default="Txn accounts")
-    txn_accounts_as_str: bool = Field(default=False)
-    txn_accounts_join: str = Field(min_length=1, default=" | ")
-    first_fiscal_month: int = Field(ge=1, le=12, default=1)
-    fiscal_year: bool = Field(default=True)
-    fiscal_year_tag: str = Field(min_length=1, default="Fiscal year")
-    fiscal_month: bool = Field(default=True)
-    fiscal_month_tag: str = Field(min_length=1, default="Fiscal month")
-
-    @staticmethod
-    def no_extras() -> 'PostingExtraTags':
-        return PostingExtraTags(account_tags=False,
-                                future_date=False, last_x_days=[],
-                                year=False, month=False, txn_accounts=False,
-                                fiscal_year=False, fiscal_month=False)
+from typing import Callable, Union
+from brightsidebudget.account import Account, QName
+from brightsidebudget.bassertion import BAssertion
+from brightsidebudget.posting import Posting, RPosting, Txn, txn_from_postings
 
 
 class Journal():
-    def __init__(self, accounts: list[Account], postings: list[Posting],
-                 bassertions: list[BAssertion] = None):
-        self.accounts = accounts
-        self.postings = postings
-        self.bassertions = bassertions if bassertions is not None else []
-        self.accounts_graph: nx.DiGraph = None  # Also serves as a dict of accounts
-        self.roots: list[Account] = None
-        self.postings_by_txn: dict[int, list[Posting]] = None
-        self.postings_by_acc: dict[str, list[Posting]] = None
-        # Dictionary of account daily flow and balance. For each account we
-        # store the minimum date, the maximum index where the balance is valid
-        # and a list of tuples with the daily flow and balance. The balance can
-        # become invalid when a posting is added to the account. It will be
-        # recomputed when needed.
-        self.balances: dict[str, tuple[date, int, list[tuple[Decimal, Decimal]]]] = None
-        self.bassertions_by_acc: dict[str, list[BAssertion]] = None
-
-        self._init()
-
-    def _init(self):
-        # Verify accounts
-        seen = set()
-        for a in self.accounts:
-            if a.name in seen:
-                raise ValueError(f"Duplicate account {a.name}")
-            seen.add(a.name)
-        self.accounts_graph = nx.DiGraph()
-        for acc in self.accounts:
-            self.accounts_graph.add_node(acc.name, account=acc)
-        for acc in self.accounts:
-            p = acc.parent
-            if p:
-                if p not in self.accounts_graph:
-                    raise ValueError(f"Unknown parent: {p}")
-                self.accounts_graph.add_edge(p, acc.name)
-        if not nx.is_directed_acyclic_graph(self.accounts_graph):
-            cycle = nx.find_cycle(self.accounts_graph)
-            msg = " -> ".join([x for x, _ in cycle])
-            msg = f"{msg} -> {cycle[0][0]}"
-            raise ValueError(f"Cycle in accounts: {msg}")
-        for p in self.postings:
-            if p.account not in self.accounts_graph:
-                raise ValueError(f"Unknown account: {p.account}")
-        for ba in self.bassertions:
-            if ba.account not in self.accounts_graph:
-                raise ValueError(f"Unknown account: {ba.account}")
-
-        # Add useful information to accounts graph
-        self.roots = [self.accounts_graph.nodes[n]["account"]
-                      for (n, degree) in self.accounts_graph.in_degree
-                      if degree == 0]
-        for r in self.roots:
-            self.accounts_graph.nodes[r.name]["root"] = r
-            for n in nx.descendants(self.accounts_graph, r.name):
-                self.accounts_graph.nodes[n]["root"] = r
-        for n in self.accounts_graph.nodes:
-            self.accounts_graph.nodes[n]["depth"] = len(nx.ancestors(self.accounts_graph, n))
-
-        # Compute txns_by_id and txns_by_acc
-        self.postings_by_txn = {}
-        self.postings_by_acc = {acc.name: [] for acc in self.accounts}
-        for p in self.postings:
-            if p.txn not in self.postings_by_txn:
-                self.postings_by_txn[p.txn] = []
-            self.postings_by_txn[p.txn].append(p)
-            self.postings_by_acc[p.account].append(p)
-
-        # Verify txns
-        for k, v in self.postings_by_txn.items():
-            s = sum([t.amount for t in v])
-            if s != Decimal("0"):
-                raise ValueError(f"Txn {k} is not balanced. Sum: {s}")
-            dt_count = len({t.date for t in v})
-            if dt_count != 1:
-                raise ValueError(f"Txn {k} has {dt_count} dates")
-
-        # Verify bassertions
-        seen = set()
-        for ba in self.bassertions:
-            if (ba.date, ba.account) in seen:
-                raise ValueError(f"Duplicate bassertion: {ba.date} {ba.account}")
-            seen.add((ba.date, ba.account))
-
-        # Initialize balances
-        self.balances = {}
-        for acc in self.accounts:
-            self.balances[acc.name] = (None, None, None)
-
-        # Compute bassertions_by_acc
-        self.bassertions_by_acc = {acc.name: [] for acc in self.accounts}
-        for ba in self.bassertions:
-            self.bassertions_by_acc[ba.account].append(ba)
-
-    def _init_balance(self, account: str) -> tuple[date, int, list[tuple[Decimal, Decimal]]]:
-        ps = self.postings_by_acc[account]
-        if not ps:
-            return (None, None, [])
-        min_date = min(t.date for t in ps)
-        min_date = date(min_date.year, 1, 1)
-        max_date = max(t.date for t in ps)
-        max_date = date(max_date.year, 12, 31)
-
-        # To make our lives easier, we add all dates. Since there is only 365
-        # days in a year and no one keeps 10 000 years of financial records,
-        # this is not a big deal.
-
-        xs = [Decimal("0") for _ in range((max_date - min_date).days + 1)]
-
-        # Compute flow
-        for p in ps:
-            idx = (p.date - min_date).days
-            xs[idx] += p.amount
-
-        # Compute balance
-        total = Decimal("0")
-        for idx, v in enumerate(xs):
-            total += v
-            xs[idx] = (v, total)
-
-        self.balances[account] = (min_date, len(xs) - 1, xs)
-
-        return (min_date, len(xs) - 1, xs)
-
-    def _recompute_balance(self, account: str) -> list[tuple[Decimal, Decimal]]:
-        (min_date, max_bal_idx, xs) = self.balances[account]
-
-        total = xs[max_bal_idx][1]
-        start_idx = max_bal_idx + 1
-        for idx, v in enumerate(xs[start_idx:], start=start_idx):
-            total += v
-            xs[idx] = (v, total)
-
-        self.balances[account] = (min_date, len(xs) - 1, xs)
-
-        return xs
-
-    def check_bassertions(self) -> list[BAssertionFail]:
-        err = []
-        for ba in self.bassertions:
-            actual_balance = self.balance(ba.account, ba.date, ba.include_children)
-            diff = ba.balance - actual_balance
-            if diff != Decimal("0"):
-                err.append(BAssertionFail(bassertion=ba, actual_balance=actual_balance))
-        return err
-
-    def balance(self, account: str, date: date, include_children: bool = True) -> Decimal:
-        (min_date, max_bal_idx, xs) = self.balances[account]
-        if xs is None:
-            (min_date, max_bal_idx, xs) = self._init_balance(account)
-
-        if min_date is None or date < min_date:
-            total = Decimal("0")
-        else:
-            idx = (date - min_date).days
-            if idx >= len(xs):
-                idx = len(xs) - 1
-            if idx > max_bal_idx:
-                xs = self._recompute_balance(account)
-            total = xs[idx][1]
-
-        if include_children:
-            for c in self.accounts_graph.successors(account):
-                total += self.balance(c, date, include_children=True)
-        return total
-
-    def flow(self, account: str, date: date, include_children: bool = True) -> Decimal:
-        (min_date, _, xs) = self.balances[account]
-        if xs is None:
-            (min_date, _, xs) = self._init_balance(account)
-
-        if min_date is None or date < min_date:
-            total = Decimal("0")
-        else:
-            idx = (date - min_date).days
-            if idx >= len(xs):
-                total = Decimal("0")
-            else:
-                total = xs[idx][0]
-        if include_children:
-            for c in self.accounts_graph.successors(account):
-                total += self.flow(c, date, include_children=True)
-        return total
-
-    def root(self, account: str) -> Account:
+    """
+    A Journal is a collection of postings that can be used to track the
+    financial activities of a person or organization. It also contains a list
+    of accounts, balance assertions and budget targets.
+    """
+    def __init__(self):
         """
-        Return the root account of account.
+        Creates an empty journal. Use the add_* methods to populate the journal.
         """
-        return self.accounts_graph.nodes[account]["root"]
+        self.accounts: list[Account] = []
+        self.postings: list[Posting] = []
+        self.targets: list[RPosting] = []
+        self.bassertions: list[BAssertion] = []
+        self.txns_dict: dict[int, Txn] = {}
+        self.full_qname_set: set[QName] = set()
+        self.short_qname_dict: dict[QName, Account] = {}
+        self._next_txn_id = 1
 
-    def parents(self, account: str) -> list[Account]:
-        """
-        Return a list of the parents of account from immediate parent to root.
-        """
-        parents = []
-        while account:
-            account = self.accounts_graph.nodes[account]["account"].parent
-            if account:
-                parents.append(self.accounts_graph.nodes[account]["account"])
-        return parents
-
-    def children(self, account: str) -> list[Account]:
-        """
-        Return a list of the immediate children of account.
-        """
-        return [self.accounts_graph.nodes[c]["account"]
-                for c in self.accounts_graph.successors(account)]
-
-    def descendants(self, account: str) -> list[Account]:
-        """
-        Return a list of the descendants of account.
-        Children, children of children, etc.
-        """
-        return [self.accounts_graph.nodes[c]["account"]
-                for c in nx.descendants(self.accounts_graph, account)]
-
-    def accounts_extra(self, accounts: list[Account] = None,
-                       extra: AccountExtraTags = None) -> list[Account]:
-        """
-        Add extra information to accounts.
-        If accounts is None, return a copy of self.accounts with extra information.
-        If extra is None, use the default extra information.
-        """
-        if accounts is None:
-            accounts = [a.copy() for a in self.accounts]
-        if extra is None:
-            extra = AccountExtraTags()
-
-        if extra.depth:
-            for a in accounts:
-                a[extra.depth_tag] = (self.accounts_graph.nodes[a.name]["depth"] +
-                                      extra.depth_start)
-        if extra.hierarchy:
-            max_depth = nx.dag_longest_path_length(self.accounts_graph) + 1
-            for a in accounts:
-                parents = [a] + self.parents(a.name)
-                parents.reverse()
-                for i in range(max_depth):
-                    if i < len(parents):
-                        x = parents[i].name
-                    else:
-                        x = None
-                    a[extra.hierarchy_tag_format.format(i + extra.depth_start)] = x
-
-        return accounts
-
-    def postings_extra(self, ps: list[Posting] = None, today: date = None,
-                       extra: PostingExtraTags = None) -> list[Posting]:
-        """
-        Add extra information to postings.
-        If ps is None, return a copy of self.postings with extra information.
-        If today is None, use the current date.
-        If extra is None, use the default extra information.
-        """
-        if ps is None:
-            ps = [t.copy() for t in self.postings]
-            ps_by_id = self.postings_by_txn
-        else:
-            ps_by_id = defaultdict(list)
-            for p in ps:
-                ps_by_id[p.txn].append(p)
-        if today is None:
-            today = date.today()
-        if extra is None:
-            extra = PostingExtraTags()
-        if extra.account_tags:
-            accs = self.accounts_extra(extra=extra.account_tags_extra)
-            accs_extra_by_name = {a.name: a for a in accs}
-        ffm = extra.first_fiscal_month
-        for p in ps:
-            if extra.account_tags:
-                d = accs_extra_by_name[p.account]
-                p.update(d._data)
-                del p["Name"]  # Already in the account field
-            if extra.future_date:
-                p[extra.future_date_tag] = p.date > today
-            if extra.last_x_days:
-                dt = p.date
-                for x in extra.last_x_days:
-                    p[extra.last_x_days_tag_format.format(x)] = dt > today - timedelta(days=x)
-            if extra.year:
-                p[extra.year_tag] = p.date.year
-            if extra.month:
-                p[extra.month_tag] = p.date.month
-            if extra.txn_accounts:
-                txn_id = p.txn
-                p[extra.txn_accounts_tag] = sorted({x.account
-                                                    for x in ps_by_id[txn_id]})
-                if extra.txn_accounts_as_str:
-                    p[extra.txn_accounts_tag] = (extra
-                                                 .txn_accounts_join
-                                                 .join(p[extra.txn_accounts_tag]))
-
-            if extra.fiscal_year:
-                if ffm == 1 or p.date.month < ffm:
-                    p[extra.fiscal_year_tag] = p.date.year
-                else:
-                    p[extra.fiscal_year_tag] = p.date.year + 1
-            if extra.fiscal_month:
-                p[extra.fiscal_month_tag] = ((p.date.month - ffm) % 12) + 1
-        return ps
-
-    def fingerprints(self, tags: list[str] = None) -> dict[tuple, int]:
-        d = {}
-        for p in self.postings:
-            x = p.fingerprint(tags)
-            if x not in d:
-                d[x] = 1
-            else:
-                d[x] += 1
-        return d
-
+    @property
     def next_txn_id(self) -> int:
+        return self._next_txn_id
+
+    def txn(self, txnid: int) -> Txn:
+        return self.txns_dict[txnid]
+
+    def account(self, qname: Union[QName, str]) -> Account:
         """
-        Return the next available txn id. All numbers from this id and up are
-        available for new txns.
+        Returns the account with the given qualified name.
+
+        The qualified name can be shortened if it is unique. For example,
+        'Assets:Short-term:Checking' can be shortened to 'Checking', provided
+        that there is no other account with the same short name.
+
+        In the case that a full qualified name is also the short name of another
+        account, the account corresponding to the full qualified name is
+        returned. For example, if there are two accounts 'Assets:Foo:Checking'
+        and 'Foo:Checking', then account('Foo:Checking') will return
+        'Foo:Checking' and not 'Assets:Foo:Checking'.
         """
-        return max(self.postings_by_txn.keys(), default=0) + 1
+        if isinstance(qname, str):
+            qname = QName(qname=qname)
+        return self.short_qname_dict[qname]
+
+    def has_account(self, qname: Union[QName, str], full_qname: bool = False) -> bool:
+        """
+        Returns True if the account exists in the journal.
+
+        full_qname: If True, the qname is considered as a full qualified name
+        and must match exactly. If False, the qname is considered as a short
+        qualified name and can match any account that has the same short name.
+        """
+        if isinstance(qname, str):
+            qname = QName(qname=qname)
+        if full_qname:
+            return qname in self.full_qname_set
+        else:
+            return qname in self.short_qname_dict
+
+    def short_qname(self, full_qname: Union[QName, str]) -> QName:
+        """
+        Returns the shortest qualified name that uniquely identifies the account.
+        """
+        if isinstance(full_qname, str):
+            full_qname = QName(qname=full_qname)
+        ls = full_qname._qlist
+        # We try all possible short names starting from shortest to longest
+        for i in range(len(ls) - 1, -1, -1):
+            short_name = QName(ls[i:])
+            if (short_name in self.short_qname_dict
+               and self.short_qname_dict[short_name].qname == full_qname):
+                return short_name
+        raise ValueError(f'Account {full_qname} does not exist or is ambiguous')
+
+    def full_qname(self, qname: Union[QName, str]) -> QName:
+        """
+        Returns the full qualified name of an account.
+        """
+        if isinstance(qname, str):
+            qname = QName(qname=qname)
+        return self.short_qname_dict[qname].qname
+
+    def is_leaf_account(self, qname: Union[QName, str]) -> bool:
+        """
+        Returns True if the account is a leaf account.
+        """
+        full_qname = self.full_qname(qname)
+        for a in self.accounts:
+            if a.qname.is_descendant_of(full_qname):
+                return False
+        return True
+
+    def add_accounts(self, accounts: list[Account], copy: bool = False):
+        """
+        Adds a list of accounts to the journal.
+        Verifies that the accounts do not already exist and that the immediate
+        parent of each account exists.
+        """
+        if copy:
+            accounts = [a.copy() for a in accounts]
+
+        for a in accounts:
+            if a.qname in self.full_qname_set:
+                raise ValueError(f'Account {a.qname} already exists')
+            # Check immediate parent exists
+            parent = a.qname.parent
+            if parent and parent not in self.short_qname_dict:
+                raise ValueError(f'Parent account {parent} does not exist or is ambiguous')
+
+            self.full_qname_set.add(a.qname)
+            # Update qname_dict. This dict also contains shorted names
+            self.accounts.append(a)
+            self.short_qname_dict[a.qname] = a
+            ls = a.qname._qlist
+            for idx in range(1, len(ls)):
+                short_name = QName(ls[idx:])
+                if short_name in self.full_qname_set:
+                    # Cannot overwrite a full qname
+                    continue
+                if short_name in self.short_qname_dict:
+                    # Short name already exists, remove it to avoid ambiguity
+                    del self.short_qname_dict[short_name]
+                else:
+                    self.short_qname_dict[short_name] = a
+
+    def add_txns(self, txns: Union[Txn, list[Txn]],
+                 copy: bool = False,
+                 ignore_txnid: bool = True):
+        """
+        Adds transactions to the journal.
+        The accounts in the postings must exist in the journal.
+        The accounts must be leaf accounts.
+        """
+        if not isinstance(txns, list):
+            txns = [txns]
+
+        if copy:
+            txns = [t.copy() for t in txns]
+
+        # Validate postings
+        id = self._next_txn_id
+        for t in txns:
+            for p in t.postings:
+                if ignore_txnid:
+                    p.txnid = id
+                elif p.txnid in self.txns_dict:
+                    raise ValueError(f'Transaction {p.txnid} already exists')
+
+                if p.acc_qname not in self.short_qname_dict:
+                    msg = f'Txn {p.txnid}: Account {p.acc_qname} does not exist or is ambiguous'
+                    raise ValueError(msg)
+
+                # Update to full qname
+                p.acc_qname = self.full_qname(p.acc_qname)
+
+                if not self.is_leaf_account(p.acc_qname):
+                    raise ValueError(f'Txn {p.txnid}: Account {p.acc_qname} is not a leaf account')
+
+            id += 1
+
+        for t in txns:
+            self.txns_dict[t.txnid] = t
+            self.postings.extend(t.postings)
+
+        if ignore_txnid:
+            self._next_txn_id = id
+        else:
+            max_id = max((t.txnid for t in txns), default=0)
+            self._next_txn_id = max(max_id + 1, self._next_txn_id)
+
+    def add_bassertions(self, bassertions: list[BAssertion],
+                        copy: bool = False):
+        """
+        Adds a list of balance assertions to the journal.
+        The accounts in the balance assertions must exist in the journal.
+        The accounts may be leaf accounts or parent accounts.
+        """
+        if copy:
+            bassertions = [b.copy() for b in bassertions]
+
+        for b in bassertions:
+            if b.acc_qname not in self.short_qname_dict:
+                raise ValueError(f'Account {b.acc_qname} does not exist or is ambiguous')
+
+            # Update to full qname
+            b.acc_qname = self.full_qname(b.acc_qname)
+
+        for b in bassertions:
+            self.bassertions.append(b)
+
+    def add_targets(self, targets: list[RPosting], copy: bool = False):
+        """
+        Adds a list of budget targets to the journal.
+        The accounts in the targets must exist in the journal.
+        The accounts must be leaf accounts.
+        """
+        if copy:
+            targets = [t.copy() for t in targets]
+
+        for t in targets:
+            if t.acc_qname not in self.short_qname_dict:
+                raise ValueError(f'Account {t.acc_qname} does not exist or is ambiguous')
+            if not self.is_leaf_account(t.acc_qname):
+                raise ValueError(f'Account {t.acc_qname} is not a leaf account')
+
+            # Update to full qname
+            t.acc_qname = self.full_qname(t.acc_qname)
+
+        for t in targets:
+            self.targets.append(t)
+
+    def balance(self, date: date, qname: Union[QName, str],
+                use_stmt_date: bool = False) -> Decimal:
+        """
+        Returns the balance of an account at a certain date.
+
+        This function is not optimized for performance.
+        """
+        if isinstance(qname, str):
+            qname = QName(qname=qname)
+
+        def get_date(p: Posting) -> date:
+            return p.stmt_date if use_stmt_date else p.date
+
+        balance = Decimal(0)
+        full_qname = self.full_qname(qname)
+        for p in self.postings:
+            if p.acc_qname == full_qname and get_date(p) <= date:
+                balance += p.amount
+
+        return balance
+
+    def budget_txns(self, start_date: date, end_date: date,
+                    counterpart: Union[QName, str]) -> list[Txn]:
+        """
+        Generates a list of transactions from the budget targets
+        between start_date and end_date. The counterpart account is used to
+        balance the transactions.
+        """
+        if isinstance(counterpart, str):
+            counterpart = QName(qname=counterpart)
+        id = self.next_txn_id
+        txns: list[Txn] = []
+        for t in self.targets:
+            xs = t.postings_between(start=start_date, end=end_date, txnid=id)
+            for p in xs:
+                p2 = Posting(txnid=p.txnid, date=p.date, acc_qname=counterpart,
+                             amount=-p.amount, comment=p.comment,
+                             stmt_desc=p.stmt_desc, stmt_date=p.stmt_date,
+                             tags=p.tags.copy())
+                txns.append(Txn([p, p2]))
+            id += len(xs)
+
+        self._next_txn_id = id
+        return txns
 
     @classmethod
-    def from_csv(cls, accounts: str, postings: Union[str, list[str]], bassertions: str = None,
-                 encoding: str = "utf-8", **dictreader_args) -> 'Journal':
-        with open(accounts, "r", encoding=encoding) as f:
-            accounts = [Account.from_dict(x) for x in csv.DictReader(f, **dictreader_args)]
-
-        ps = []
+    def from_csv(cls, accounts: str, postings: Union[str, list[str]],
+                 bassertions: Union[str, None] = None,
+                 targets: Union[str, None] = None, encoding: str = 'utf-8'):
+        """
+        Loads a journal from CSV files.
+        """
         if isinstance(postings, str):
             postings = [postings]
-        for f in postings:
-            with open(f, "r", encoding=encoding) as f:
-                ps.extend([Posting.from_dict(x) for x in csv.DictReader(f, **dictreader_args)])
 
-        if bassertions is None:
-            bas = []
+        def empty_is_none(x: Union[str, None]) -> Union[str, None]:
+            return None if x == '' else x
+
+        j = cls()
+        accs = []
+        with open(accounts, 'r', encoding=encoding) as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                qname = row['Compte']
+                d = row.copy()
+                d.pop('Compte')
+                accs.append(Account(qname=qname, tags=d))
+        j.add_accounts(accs)
+
+        ps: list[Posting] = []
+        for p_file in postings:
+            with open(p_file, 'r', encoding=encoding) as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    txn_id = int(row['Txn'])
+                    dt = date.fromisoformat(row['Date'])
+                    acc = row['Compte']
+                    amnt = Decimal(row['Montant'])
+                    comment = empty_is_none(row.get('Commentaire'))
+                    stmt_desc = empty_is_none(row.get('Description du relevé'))
+                    stmt_date = empty_is_none(row.get('Date du relevé'))
+                    if stmt_date:
+                        stmt_date = date.fromisoformat(stmt_date)
+                    d = row.copy()
+                    for x in ['Txn', 'Date', 'Compte', 'Montant', 'Commentaire',
+                              'Description du relevé', 'Date du relevé']:
+                        d.pop(x, None)
+                    p = Posting(txnid=txn_id, date=dt, acc_qname=acc, amount=amnt,
+                                stmt_desc=stmt_desc, stmt_date=stmt_date, comment=comment,
+                                tags=d)
+                    ps.append(p)
+        j.add_txns(txn_from_postings(ps), ignore_txnid=False)
+
+        if bassertions is not None:
+            bs = []
+            with open(bassertions, 'r', encoding=encoding) as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    dt = date.fromisoformat(row['Date'])
+                    acc = row['Compte']
+                    balance = Decimal(row['Solde'])
+                    bs.append(BAssertion(date=dt, acc_qname=acc, balance=balance))
+            j.add_bassertions(bs)
+
+        if targets is not None:
+            ts = []
+            with open(targets, 'r', encoding=encoding) as f:
+                reader = csv.DictReader(f)
+
+                for row in reader:
+                    start = date.fromisoformat(row['Début'])
+                    acc = row['Compte']
+                    amount = Decimal(row['Montant'])
+                    comment = empty_is_none(row.get('Commentaire'))
+                    frequency = empty_is_none(row.get('Fréquence'))
+                    interval = empty_is_none(row.get('Intervalle'))
+                    if interval:
+                        interval = int(interval)
+                    count = empty_is_none(row.get('Nb occurrences'))
+                    if count:
+                        count = int(count)
+                    until = empty_is_none(row.get('Date de fin'))
+                    if until:
+                        until = date.fromisoformat(until)
+                    d = row.copy()
+                    for x in ['Début', 'Compte', 'Montant', 'Commentaire', 'Fréquence',
+                              'Intervalle', 'Nb occurrences', 'Date de fin']:
+                        d.pop(x, None)
+                    ts.append(RPosting(start=start, acc_qname=acc, amount=amount,
+                                       comment=comment, frequency=frequency, interval=interval,
+                                       count=count, until=until, tags=d))
+            j.add_targets(ts)
+
+        return j
+
+    def failed_bassertions(self, filter_future_date: bool = True,
+                           today: Union[date, None] = None) -> list[BAssertion]:
+        """
+        Returns the list of assertions that do not match the journal balances.
+        The stmt_date is used to compute the actual balance.
+        """
+        if today is None:
+            today = date.today()
+        ls = []
+        bs = sorted(self.bassertions, key=lambda x: x.date)
+        acc_balance: dict[QName, Decimal] = {}
+        ps_idx = 0
+        ps = sorted(self.postings, key=lambda x: x.stmt_date)
+        for b in bs:
+            if filter_future_date and b.date > today:
+                break
+
+            # Update the account balances up to the assertion date
+            while ps_idx < len(ps):
+                p = ps[ps_idx]
+                if p.stmt_date > b.date:
+                    break
+                if p.acc_qname not in acc_balance:
+                    acc_balance[p.acc_qname] = Decimal(0)
+                acc_balance[p.acc_qname] += p.amount
+                ps_idx += 1
+
+            actual = Decimal(0)
+            for a, m in acc_balance.items():
+                if a.is_equal_or_descendant_of(b.acc_qname):
+                    actual += m
+            if b.balance != actual:
+                ls.append(b)
+        return ls
+
+    def last_bassertion(self, qname: Union[QName, str]) -> Union[BAssertion, None]:
+        """
+        Returns the last balance assertion for the account.
+        """
+        if isinstance(qname, str):
+            qname = QName(qname=qname)
+
+        full_qname = self.full_qname(qname)
+        bs = [b for b in self.bassertions if b.acc_qname == full_qname]
+        bs.sort(key=lambda x: x.date)
+        if bs:
+            return bs[-1]
         else:
-            with open(bassertions, "r", encoding=encoding) as f:
-                bas = [BAssertion.from_dict(x) for x in csv.DictReader(f, **dictreader_args)]
-        return cls(accounts, ps, bas)
+            return None
 
-    @classmethod
-    def from_dicts(cls, accounts: list[dict], postings: list[dict],
-                   bassertions: list[dict] = None) -> 'Journal':
-        if bassertions is None:
-            bassertions = []
-        return cls([Account.from_dict(x) for x in accounts],
-                   [Posting.from_dict(x) for x in postings],
-                   [BAssertion.from_dict(x) for x in bassertions])
+    def find_subset(self, amnt: Decimal,
+                    qname: Union[QName, str],
+                    start_date: date,
+                    end_date: date,
+                    use_stmt_date: bool = False) -> Union[list[Posting], None]:
+        """
+        Returns a list of postings between start_date and end_date whose sum is
+        equal to amnt. The postings closer to the end_date are preferred.
 
+        You can use this function to find the postings that could explain a
+        difference between the balance assertion and the actual balance.
 
-def find_faulty_postings(j: Journal, fail: BAssertionFail,
-                         days_limit: int = 7) -> Union[list[Posting], None]:
-    acc = fail.bassertion.account
-    ps = j.postings_by_acc[acc]
-    if fail.bassertion.include_children:
-        for c in j.descendants(acc):
-            ps.extend(j.postings_by_acc[c])
-    dt = fail.bassertion.date
-    ps = [t for t in ps if t.date <= dt and t.date >= dt - timedelta(days=days_limit)]
-    ps.sort(key=lambda t: t.date, reverse=True)
-    subset = subset_sum([p.amount for p in ps], -fail.diff())
-    if not subset:
-        return None
-    else:
-        return [ps[i] for i in subset]
+        This function is computationally expensive and will almost always find a
+        solution if the number of postings is large enough. We recommend using
+        a small enough time window to limit the number of postings to consider.
+        """
+        if isinstance(qname, str):
+            qname = QName(qname=qname)
+
+        full_qname = self.full_qname(qname)
+
+        def get_date(p: Posting) -> date:
+            return p.stmt_date if use_stmt_date else p.date
+
+        ps = [p for p in self.postings
+              if p.acc_qname == full_qname
+              and get_date(p) <= end_date
+              and get_date(p) >= start_date]
+
+        ps.sort(key=lambda p: get_date(p), reverse=True)
+        subset = subset_sum([p.amount for p in ps], amnt)
+        if not subset:
+            return None
+        else:
+            return [ps[i] for i in subset]
+
+    def adjust_for_bassertion(self, b: BAssertion, counterpart: Union[QName, str],
+                              child: Union[QName, str, None] = None,
+                              comment: Union[str, None] = None):
+        """
+        Adjusts the journal to match the balance assertion. The account object in
+        the balance assertion can be a string or any object with a 'qname'.
+
+        The counterpart account is used to balance the transaction. If provided
+        child is the account to use instead of the one in the balance assertion.
+        It must be a descendant of the account in the balance assertion.
+        """
+
+        actual = self.balance(b.date, b.acc_qname, stmt_date=True)
+        diff = b.balance - actual
+        if diff == 0:
+            return
+
+        if child is None:
+            child = b.acc_qname
+        else:
+            if isinstance(child, str):
+                child = QName(qname=child)
+
+            if not child.is_equal_or_descendant_of(b.acc_qname):
+                raise ValueError(f'Child account {child} must be a descendant of {b.acc_qname}')
+
+        if isinstance(counterpart, str):
+            counterpart = QName(qname=counterpart)
+
+        p1 = Posting(txnid=None, date=b.date, acc_qname=child, amount=diff,
+                     comment=comment)
+        p2 = Posting(txnid=None, date=b.date, acc_qname=counterpart, amount=-diff,
+                     comment=comment)
+        self.add_txns(Txn([p1, p2]))
+
+    def export_for_excel(self, *,
+                         budget: Union[tuple[date, date], None] = None,
+                         budget_counterpart: Union[QName, str, None] = None,
+                         file: str = "txns.csv",
+                         use_short_qname: bool = True,
+                         encoding="utf8",
+                         aliases: list[tuple[str, dict[QName, QName]]] = [],
+                         today: Union[date, None] = None,
+                         first_fiscal_month: int = 1):
+        """
+        Write a list of postings to a CSV file.
+        """
+        if today is None:
+            today = date.today()
+
+        ps = [p.copy() for p in self.postings]
+        for p in ps:
+            p.tags["Txn type"] = "réel"
+        if budget is not None:
+            if budget_counterpart is None:
+                raise ValueError("budget_counterpart must be provided if budget is not None")
+            bTxns = self.budget_txns(start_date=budget[0], end_date=budget[1],
+                                     counterpart=budget_counterpart)
+            for t in bTxns:
+                for p in t.postings:
+                    p.tags["Txn type"] = "budget"
+                    ps.append(p)
+
+        ps.sort(key=lambda p: (p.date, p.txnid, p.acc_qname.qname))
+
+        def alias(qname: QName, d: dict[QName, QName]) -> QName:
+            if qname in d:
+                return d[qname]
+            else:
+                return qname
+
+        def max_depth(qname: list[QName]) -> int:
+            return max((a.depth for a in qname), default=0)
+
+        def all_p_tags(ps: list[Posting]) -> list[str]:
+            return list({k for p in ps for k in p.tags.keys()})
+
+        def all_a_tags(accs: list[Account]) -> list[str]:
+            return list({k for a in accs for k in a.tags.keys()})
+
+        ffm = first_fiscal_month
+        with open(file, "w", encoding=encoding) as f:
+            writer = csv.writer(f, lineterminator="\n")
+            header = ["Txn", "Date", "Compte"]
+            maxdepth = max_depth([p.acc_qname for p in ps])
+            header += [f"Compte {i}" for i in range(1, maxdepth + 1)]
+            header += ["Montant", "Date du relevé", "Commentaire", "Description du relevé"]
+            p_tag_keys = all_p_tags(ps)
+            header += p_tag_keys
+            a_tag_keys = all_a_tags(self.accounts)
+            header += a_tag_keys
+            header += ["Année", "Mois", "Année-Mois", "Mois relatif", "Année fiscale",
+                       "Mois fiscal", "Date future"]
+            for a, alias_dict in aliases:
+                ps2 = [alias(p.acc_qname, alias_dict) for p in ps]
+                md2 = max_depth(ps2)
+                header.append(a)
+                header += [f"{a} {i}" for i in range(1, md2 + 1)]
+            writer.writerow(header)
+            for p in ps:
+                account = self.account(p.acc_qname)
+                if ffm == 1 or p.date.month < ffm:
+                    fiscal_year = p.date.year
+                else:
+                    fiscal_year = p.date.year + 1
+
+                fiscal_month = ((p.date.month - ffm) % 12) + 1
+                rel_month = (p.date.year - today.year) * 12 + (p.date.month - today.month)
+                row = [p.txnid, p.date]
+                if use_short_qname:
+                    row.append(self.short_qname(p.acc_qname))
+                else:
+                    row.append(p.acc_qname)
+                groups = p.acc_qname.qlist
+                if len(groups) < maxdepth:
+                    groups += [None for _ in range(maxdepth - len(groups))]
+                row += groups
+                row += [p.amount, p.stmt_date, p.comment, p.stmt_desc]
+                for k in p_tag_keys:
+                    row.append(p.tag(k))
+
+                for k in a_tag_keys:
+                    row.append(account.tag(k))
+                row += [p.date.year, p.date.month, f"{p.date.year}-{p.date.month:02d}",
+                        rel_month, fiscal_year, fiscal_month, p.date > today]
+                for a, alias_dict in aliases:
+                    a2 = alias(p.acc_qname, alias_dict)
+                    if use_short_qname:
+                        row.append(self.short_qname(a2))
+                    else:
+                        row.append(a2)
+                    groups2 = a2.qlist
+                    if len(groups2) < md2:
+                        groups2 += [None for _ in range(md2 - len(groups2))]
+                    row += groups2
+                writer.writerow(row)
+
+    def write_txns(self, *,
+                   txns: Union[list[Txn], None] = None,
+                   filefunc: Union[str, Callable[[Txn], str]] = "txns.csv",
+                   use_short_qname: bool = True,
+                   renumber: bool = False,
+                   encoding="utf8"):
+        """
+        Write the postings to a CSV file.
+        """
+        if txns is None:
+            txns = self.txns_dict.values()
+
+        txns = sorted(txns, key=lambda x: (x.date, x.txnid))
+
+        if isinstance(filefunc, str):
+            filename = filefunc
+
+            def filefunc(_):
+                return filename
+
+        file_dict: dict[str, list[Posting]] = {}
+        for t in txns:
+            file = filefunc(t)
+            if file not in file_dict:
+                file_dict[file] = []
+            ps = sorted(t.postings, key=lambda x: x.acc_qname.qname)
+            file_dict[file].extend(ps)
+
+        if renumber:
+            idx = 1
+            ids: dict[int, int] = {}
+            for t in txns:
+                ids[t.txnid] = idx
+                idx += 1
+
+        def all_p_tags(ps: list[Posting]) -> list[str]:
+            return list({k for p in ps for k in p.tags.keys()})
+
+        for file, ps in file_dict.items():
+            with open(file, "w", encoding=encoding) as f:
+                writer = csv.writer(f, lineterminator="\n")
+                header = ["Txn", "Date", "Compte", "Montant", "Date du relevé",
+                          "Commentaire", "Description du relevé"]
+                p_tag_keys = all_p_tags(ps)
+                header += p_tag_keys
+                writer.writerow(header)
+                for p in ps:
+                    if renumber:
+                        txnid = ids[p.txnid]
+                    else:
+                        txnid = p.txnid
+                    row = [txnid, p.date]
+                    if use_short_qname:
+                        row.append(self.short_qname(p.acc_qname))
+                    else:
+                        row.append(p.acc_qname)
+                    row += [p.amount, p.stmt_date, p.comment, p.stmt_desc]
+                    for k in p_tag_keys:
+                        row.append(p.tag(k))
+                    writer.writerow(row)
 
 
 def subset_sum(amounts: list[Decimal], target: Decimal) -> list[int]:

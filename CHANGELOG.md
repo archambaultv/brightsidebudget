@@ -6,7 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
-## [Unreleased]
+## [0.4.0]
+### Changed
+- Major refactoring of the library. Most classes have changed and the API is not
+  backward compatible.
+- `Account`, `Posting`, `BAssertion` classes are not MutableMapping anymore.
+
+### Added
+- Add `QName` class to handle qualified names and identify accounts.
+- Add `Txn` class to group postings together in a transaction.
+
+### Removed
+- Removed dependency on `networkx` and `pydantic` libraries.
+
+## [0.3.0]
 ### Added
 - Add a `get_dict` method to MutableMapping classes to get the underlying dictionary.
 

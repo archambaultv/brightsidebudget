@@ -1,4 +1,0 @@
-RTxn,Account,Amount,Start,Recurrence
-Food,Food,350,2021-01-01,FREQ=Monthly
-Rent,Rent,1000,2021-01-01,FREQ=Monthly
-Salary,Salary,2000,2021-01-01,FREQ=WEEKLY;INTERVAL=2

@@ -1,87 +1,73 @@
 from datetime import date
-from decimal import Decimal, InvalidOperation
-from pydantic import ValidationError
+from decimal import Decimal
 import pytest
-from brightsidebudget import Posting
+from brightsidebudget import Posting, QName, Txn
+from brightsidebudget.posting import RPosting
 
 
-@pytest.mark.parametrize("d",
-                         [{"Txn": 1, "Date": "2021-01-01", "Account": "A", "Amount": 100},
-                          {"Txn": "1", "Date": date(2021, 1, 1), "Account": "A", "Amount": -100,
-                           "desc": "My transaction"},
-                          {"Txn": 1, "Date": "2021-01-01", "Account": "A", "Amount": "100.04",
-                           "date2": date(2021, 1, 1)},
-                          {"Txn": 1, "Date": "2021-01-01", "Account": "A",
-                           "Amount": 100.0145, "date2": date(2021, 1, 1), "payee": "ABC Corp"},
-                          {"Txn": 1, "Date": "2021-01-01", "Account": "A", "Amount": 100,
-                           "date2": date(2021, 1, 1)}])
-def test_posting_from_dict(d: dict):
-    p = Posting.from_dict(d, copy=True)
-    d["Amount"] = Decimal(str(d["Amount"]))
-    d["Date"] = date(2021, 1, 1)
-    d["Txn"] = int(d["Txn"])
-    assert p.account == "A"
-    assert p.amount == d["Amount"]
-    assert p.txn == 1
-    assert p.date == date(2021, 1, 1)
-    assert p.get_dict() == d
+def test_posting():
+    p1 = Posting(txnid=1, date=date(2021, 1, 1), acc_qname="A:B:C", amount=Decimal("100.00"))
+    p2 = Posting(txnid=1, date=date(2021, 1, 1), acc_qname=QName("A:B:C"),
+                 amount=Decimal("100.00"))
+    assert isinstance(p1.acc_qname, QName)
+    assert p1.acc_qname == p2.acc_qname
 
 
-def test_get_set():
-    p = Posting(txn=1, account="A", date="2021-01-01", amount=100)
-    assert p.account == "A"
-    assert p.amount == Decimal("100")
-    assert p.date == date(2021, 1, 1)
-    assert p.txn == 1
-    p.account = "B"
-    p.amount = "200"
-    p.date = "2021-01-02"
-    p.txn = 2
-    assert p.account == "B"
-    assert p.amount == Decimal("200")
-    assert p.date == date(2021, 1, 2)
-    assert p.txn == 2
-    p["Account"] = "C"
-    p["Amount"] = 300
-    p["Date"] = "2021-01-03"
-    p["Txn"] = 3
-    assert p.account == "C"
-    assert p.amount == Decimal("300")
-    assert p.date == date(2021, 1, 3)
-    assert p.txn == 3
+def test_txn():
+    p1 = Posting(txnid=1, date=date(2021, 1, 1), acc_qname="A:A1", amount=Decimal("100.00"))
+    p2 = Posting(txnid=1, date=date(2021, 1, 1), acc_qname=QName("E:E1"),
+                 amount=Decimal("-100.00"))
+    t = Txn([p1, p2])
+    assert t.date == date(2021, 1, 1)
+    assert t.txnid == 1
 
     with pytest.raises(ValueError):
-        p.account = ""
+        Txn([])
 
     with pytest.raises(ValueError):
-        p["Account"] = ""
+        Txn([p1])
 
+    p2.amount = Decimal("-99.99")
     with pytest.raises(ValueError):
-        p.account = 125
+        Txn([p1, p2])
+    p2.amount = Decimal("-100.00")
 
+    p2.txnid = 2
     with pytest.raises(ValueError):
-        p["Account"] = 125
-
-    with pytest.raises(InvalidOperation):
-        p.amount = "Hello"
-
-    with pytest.raises(InvalidOperation):
-        p["Amount"] = "Hello"
-
-    with pytest.raises(TypeError):
-        p.date = 10.5
-
-    with pytest.raises(TypeError):
-        p["Date"] = 10.5
+        Txn([p1, p2])
+    p2.txnid = 1
 
 
-@pytest.mark.parametrize("d",
-                         [{"Date": "2021-01-01", "Account": "A", "Amount": 100},
-                          {"Txn": "1", "Account": "A", "Amount": -100,
-                           "desc": "My transaction"},
-                          {"Txn": 1, "Date": "2021-01-01", "Amount": 100.04},
-                          {"Txn": 1, "Date": "2021-01-01", "Account": "A"},
-                          {"Txn": "Hello", "Date": "2021-01-01", "Account": "A", "Amount": 100}])
-def test_bad_from_dict(d: dict):
-    with pytest.raises((ValidationError, ValueError)):
-        Posting.from_dict(d)
+def test_rposting():
+    r1 = RPosting(start=date(2021, 1, 1), acc_qname="A:B:C", amount=Decimal("100.00"))
+    r2 = RPosting(start=date(2021, 1, 1), acc_qname=QName("A:B:C"), amount=Decimal("100.00"))
+    assert isinstance(r1.acc_qname, QName)
+    assert r1.acc_qname == r2.acc_qname
+
+    ps = r1.postings_between(date(2021, 1, 1), date(2021, 1, 31))
+    assert len(ps) == 1
+    assert ps[0].date == date(2021, 1, 1)
+    assert ps[0].acc_qname == QName("A:B:C")
+    assert ps[0].amount == Decimal("100.00")
+
+    ps = r1.postings_between(date(2021, 1, 2), date(2021, 1, 31))
+    assert len(ps) == 0
+
+    ps = r1.postings_between(date(2020, 1, 1), date(2020, 12, 31))
+    assert len(ps) == 0
+
+    r3 = RPosting(start=date(2021, 1, 1), acc_qname="A:B:C", amount=Decimal("100.00"),
+                  frequency="daily", interval=2, count=3)
+    ps = r3.postings_between(date(2021, 1, 1), date(2021, 1, 31))
+    assert len(ps) == 3
+    assert ps[0].date == date(2021, 1, 1)
+    assert ps[1].date == date(2021, 1, 3)
+    assert ps[2].date == date(2021, 1, 5)
+
+    r4 = RPosting(start=date(2021, 1, 1), acc_qname="A:B:C", amount=Decimal("100.00"),
+                  frequency="monthly", interval=2, until=date(2021, 6, 1))
+    ps = r4.postings_between(date(2021, 1, 1), date(2021, 6, 1))
+    assert len(ps) == 3
+    assert ps[0].date == date(2021, 1, 1)
+    assert ps[1].date == date(2021, 3, 1)
+    assert ps[2].date == date(2021, 5, 1)

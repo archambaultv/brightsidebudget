@@ -19,7 +19,11 @@ the exception that the versions 0.*.* may have breaking changes in minor version
 ### Removed
 - Removed dependency on `networkx` and `pydantic` libraries.
 
-## [0.3.0]
+## [0.3.1] - 2024-06-26
+### Fixed
+- Fixed a bug in `postings_extra` when computing the fiscal year of a transaction.
+
+## [0.3.0] - 2024-06-05
 ### Added
 - Add a `get_dict` method to MutableMapping classes to get the underlying dictionary.
 

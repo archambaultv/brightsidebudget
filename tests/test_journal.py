@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 from brightsidebudget import Journal
 
 
@@ -24,6 +25,14 @@ def test_check_balances2(accounts_file, bassertions_file):
 def test_next_txn_id(accounts_file, txns_file):
     j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
     assert j.next_txn_id == 3
+
+
+def test_balance(accounts_file, txns_file):
+    j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
+    assert j.balance(date(2021, 1, 2), 'Assets:Checking') == Decimal(2460)
+    assert j.balance(date(2021, 1, 2), 'Assets:Savings') == Decimal(15000)
+    assert j.balance(date(2021, 1, 2), 'Assets:House') == Decimal(450000)
+    assert j.balance(date(2021, 1, 2), 'Assets') == Decimal(467460)
 
 
 def test_empty_journal():

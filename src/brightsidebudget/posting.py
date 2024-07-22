@@ -12,15 +12,27 @@ class Posting():
     """
     def __init__(self, *, txnid: int, date: date, acc_qname: Union[QName, str], amount: Decimal,
                  comment: Union[str, None] = None, stmt_desc: Union[str, None] = None,
-                 stmt_date: Union[date, None] = None, tags: dict[str, str] = None):
+                 stmt_date: Union[date, None] = None,
+                 tags: Union[dict[str, str], None] = None):
         self.txnid = txnid
         self.date = date
-        self.acc_qname = acc_qname if isinstance(acc_qname, QName) else QName(acc_qname)
+        self._acc_qname = acc_qname if isinstance(acc_qname, QName) else QName(acc_qname)
         self.amount = amount
         self.comment = comment
         self.stmt_desc = stmt_desc
         self.stmt_date = stmt_date or date
         self.tags = tags or {}
+
+    @property
+    def acc_qname(self) -> QName:
+        return self._acc_qname
+
+    @acc_qname.setter
+    def acc_qname(self, value: Union[QName, str]):
+        if isinstance(value, QName):
+            self._acc_qname = value
+        else:
+            self._acc_qname = QName(value)
 
     def tag(self, key: str) -> Union[str, None]:
         return self.tags.get(key, None)
@@ -97,7 +109,7 @@ class RPosting():
                  frequency: Union[str, None] = None, interval: Union[int, None] = None,
                  count: Union[int, None] = None, until: Union[date, None] = None):
         self.start = start
-        self.acc_qname = acc_qname if isinstance(acc_qname, QName) else QName(acc_qname)
+        self._acc_qname = acc_qname if isinstance(acc_qname, QName) else QName(acc_qname)
         self.amount = amount
         self.comment = comment
         self.tags = tags or {}
@@ -133,6 +145,17 @@ class RPosting():
         else:
             r = rrule(self.frequency, dtstart=s, interval=self.interval)
         self._rrule = r
+
+    @property
+    def acc_qname(self) -> QName:
+        return self._acc_qname
+
+    @acc_qname.setter
+    def acc_qname(self, value: Union[QName, str]):
+        if isinstance(value, QName):
+            self._acc_qname = value
+        else:
+            self._acc_qname = QName(value)
 
     def postings_for_month(self, month: date) -> list[Posting]:
         """

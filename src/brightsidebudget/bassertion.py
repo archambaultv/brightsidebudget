@@ -11,8 +11,19 @@ class BAssertion():
     """
     def __init__(self, *, date: date, acc_qname: Union[QName, str], balance: Decimal):
         self.date = date
-        self.acc_qname = acc_qname if isinstance(acc_qname, QName) else QName(acc_qname)
+        self._acc_qname = acc_qname if isinstance(acc_qname, QName) else QName(acc_qname)
         self.balance = balance
+
+    @property
+    def acc_qname(self) -> QName:
+        return self._acc_qname
+
+    @acc_qname.setter
+    def acc_qname(self, value: Union[QName, str]):
+        if isinstance(value, QName):
+            self._acc_qname = value
+        else:
+            self._acc_qname = QName(value)
 
     def __str__(self):
         return f'BAssertion {self.date} {self.acc_qname} {self.balance}'

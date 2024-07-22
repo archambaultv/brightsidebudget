@@ -8,3 +8,7 @@ def test_bassertion():
     b2 = BAssertion(date=date(2021, 1, 1), acc_qname=QName("A:B:C"), balance=Decimal("100.00"))
     assert isinstance(b1.acc_qname, QName)
     assert b1.acc_qname == b2.acc_qname
+
+    # Change name using string
+    b1.acc_qname = "D:E:F"
+    assert b1.acc_qname == QName("D:E:F")

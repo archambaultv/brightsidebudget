@@ -7,9 +7,18 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) wit
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
 ## [0.4.1]
+
+### Changed
+- `qname` attribute of `QName` is now called `qstr` (breaking change).
+
 ### Fixed
 - Fixed default value of optional parameter in `export_for_excel` method of
   `Journal` class to be `None` instead of `[]`.
+- Parameter `remove_delimiter_from` of `read_bank_csv` now correctly accepts a string.
+
+## Add
+- `acc_qname` attribute or `Posting`, `RPosting`, `BAssertion` can now also be
+  set using a simple string. Same for `qname` attribute of `Account`.
 
 ## [0.4.0]
 ### Changed

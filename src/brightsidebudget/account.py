@@ -25,9 +25,9 @@ class QName():
             raise ValueError("Empty element in qname.")
 
     @property
-    def qname(self) -> str:
+    def qstr(self) -> str:
         """
-        The qualified name.
+        The qualified name as a string.
         """
         return self._qname
 
@@ -96,7 +96,8 @@ class Account():
     An Account represents a single financial entity where transactions occur.
     It is basically a QName with optional tags.
     """
-    def __init__(self, *, qname: Union[QName, str], tags: dict[str, str] = None):
+    def __init__(self, *, qname: Union[QName, str],
+                 tags: Union[dict[str, str], None] = None):
         self._qname = qname if isinstance(qname, QName) else QName(qname)
         self._tags = tags or {}
 
@@ -106,6 +107,13 @@ class Account():
         The qualified name of the account.
         """
         return self._qname
+
+    @qname.setter
+    def qname(self, value: Union[QName, str]):
+        if isinstance(value, QName):
+            self._qname = value
+        else:
+            self._qname = QName(value)
 
     @property
     def tags(self) -> dict[str, str]:

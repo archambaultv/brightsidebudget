@@ -38,7 +38,7 @@ class Posting():
         return self.tags.get(key, None)
 
     def copy(self) -> 'Posting':
-        return Posting(txnid=self.txnid, date=self.date, acc_qname=self.acc_qname,
+        return Posting(txnid=self.txnid, date=self.date, acc_qname=self._acc_qname,
                        amount=self.amount,
                        comment=self.comment, stmt_desc=self.stmt_desc, stmt_date=self.stmt_date,
                        tags=self.tags.copy())
@@ -207,6 +207,6 @@ class RPosting():
         return self.__str__()
 
     def copy(self) -> 'RPosting':
-        return RPosting(start=self.start, acc_qname=self.acc_qname, amount=self.amount,
+        return RPosting(start=self.start, acc_qname=self._acc_qname, amount=self.amount,
                         comment=self.comment, tags=self.tags.copy(), frequency=self.frequency,
                         interval=self.interval, count=self.count, until=self.until)

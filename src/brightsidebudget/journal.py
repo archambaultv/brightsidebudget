@@ -49,7 +49,10 @@ class Journal():
         """
         if isinstance(qname, str):
             qname = QName(qname=qname)
-        return self.short_qname_dict[qname]
+        try:
+            return self.short_qname_dict[qname]
+        except KeyError as e:
+            raise ValueError(f'Account {qname} does not exist or is ambiguous') from e
 
     def has_account(self, qname: Union[QName, str], full_qname: bool = False) -> bool:
         """
@@ -66,20 +69,27 @@ class Journal():
         else:
             return qname in self.short_qname_dict
 
-    def short_qname(self, full_qname: Union[QName, str]) -> QName:
+    def short_qname(self, qname: Union[QName, str]) -> QName:
         """
-        Returns the shortest qualified name that uniquely identifies the account.
+        Returns the shortest qualified name that uniquely identifies the account and
+        respects the short_qname attribute of the account.
+
+        The qname must be a valid qualified name.
         """
-        if isinstance(full_qname, str):
-            full_qname = QName(qname=full_qname)
-        ls = full_qname._qlist
+        acc = self.account(qname)
+        ls = acc.qname.qlist
         # We try all possible short names starting from shortest to longest
         for i in range(len(ls) - 1, -1, -1):
             short_name = QName(ls[i:])
-            if (short_name in self.short_qname_dict
-               and self.short_qname_dict[short_name].qname == full_qname):
-                return short_name
-        raise ValueError(f'Account {full_qname} does not exist or is ambiguous')
+            if short_name not in self.short_qname_dict:
+                continue
+            # If the short name matched, then we know it is this account
+            # because ambiguous short names are not allowed
+            if short_name.depth < acc.short_qname.depth:
+                # The short name is shorter than the account's short name
+                # We respect the account's short name
+                return acc.short_qname
+            return short_name
 
     def full_qname(self, qname: Union[QName, str]) -> QName:
         """
@@ -282,9 +292,14 @@ class Journal():
             reader = csv.DictReader(f)
             for row in reader:
                 qname = row['Compte']
+                if 'Compte nom court' in row:
+                    short_qname = row['Compte nom court']
+                else:
+                    short_qname = None
                 d = row.copy()
-                d.pop('Compte')
-                accs.append(Account(qname=qname, tags=d))
+                for x in ['Compte', 'Compte nom court']:
+                    d.pop('Compte', None)
+                accs.append(Account(qname=qname, tags=d, short_qname=short_qname))
         j.add_accounts(accs)
 
         ps: list[Posting] = []

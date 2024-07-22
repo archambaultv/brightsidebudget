@@ -67,6 +67,16 @@ def test_adjust_for_bassertion_child(accounts_file, txns_file):
     assert len(j.postings) == 10
 
 
+def test_short_qname(accounts_file, txns_file):
+    j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
+    assert j.short_qname('Assets:Checking').qstr == 'Checking'
+    assert j.short_qname('Checking').qstr == 'Checking'
+    assert j.short_qname('Assets').qstr == 'Assets'
+    assert j.short_qname('Other').qstr == 'Expenses:Other'  # Restricted by accounts file
+    assert j.short_qname('Expenses:Other').qstr == 'Expenses:Other'
+    assert j.short_qname('Expenses:Food').qstr == 'Food'
+
+
 def test_empty_journal():
     j = Journal()
     assert len(j.accounts) == 0

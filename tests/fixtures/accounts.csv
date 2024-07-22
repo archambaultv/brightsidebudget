@@ -1,4 +1,4 @@
-Compte,Numéro
+Compte,Numéro,Compte nom court
 Assets,1000
 Assets:Checking,1005
 Assets:Savings,1006
@@ -15,4 +15,4 @@ Expenses,5000
 Expenses:Utilities,5005
 Expenses:Rent,5006
 Expenses:Food,5007
-Expenses:Other,5008
+Expenses:Other,5008,Expenses:Other

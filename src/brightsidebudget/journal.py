@@ -234,7 +234,7 @@ class Journal():
         balance = Decimal(0)
         full_qname = self.full_qname(qname)
         for p in self.postings:
-            if p.acc_qname == full_qname and get_date(p) <= date:
+            if get_date(p) <= date and p.acc_qname.is_equal_or_descendant_of(full_qname):
                 balance += p.amount
 
         return balance

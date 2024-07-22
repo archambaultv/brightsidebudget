@@ -480,7 +480,7 @@ class Journal():
                          file: str = "txns.csv",
                          use_short_qname: bool = True,
                          encoding="utf8",
-                         aliases: list[tuple[str, dict[QName, QName]]] = [],
+                         aliases: Union[list[tuple[str, dict[QName, QName]]], None] = None,
                          today: Union[date, None] = None,
                          first_fiscal_month: int = 1):
         """
@@ -488,6 +488,9 @@ class Journal():
         """
         if today is None:
             today = date.today()
+
+        if aliases is None:
+            aliases = []
 
         ps = [p.copy() for p in self.postings]
         for p in ps:
@@ -502,7 +505,7 @@ class Journal():
                     p.tags["Txn type"] = "budget"
                     ps.append(p)
 
-        ps.sort(key=lambda p: (p.date, p.txnid, p.acc_qname.qname))
+        ps.sort(key=lambda p: (p.date, p.txnid, p.acc_qname.qstr))
 
         def alias(qname: QName, d: dict[QName, QName]) -> QName:
             if qname in d:
@@ -601,7 +604,7 @@ class Journal():
             file = filefunc(t)
             if file not in file_dict:
                 file_dict[file] = []
-            ps = sorted(t.postings, key=lambda x: x.acc_qname.qname)
+            ps = sorted(t.postings, key=lambda x: x.acc_qname.qstr)
             file_dict[file].extend(ps)
 
         if renumber:

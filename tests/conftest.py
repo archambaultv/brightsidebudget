@@ -12,6 +12,11 @@ def bank_checking_file() -> str:
 
 
 @pytest.fixture()
+def bank_checking_bad_delimiter() -> str:
+    return "tests/fixtures/bank_checking_bad_delimiter.csv"
+
+
+@pytest.fixture()
 def bassertions_file() -> str:
     return "tests/fixtures/bassertions.csv"
 

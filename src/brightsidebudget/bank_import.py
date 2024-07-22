@@ -16,11 +16,15 @@ class BankCsv():
     Configuration for importing bank transactions from a CSV file.
     """
     def __init__(self, *, file: str, qname: Union[QName, str], date_col: str,
-                 amount_col: Union[str, None] = None, amount_in_col: Union[str, None] = None,
-                 amount_out_col: Union[str, None] = None, stmt_desc_cols: list[str] = None,
+                 amount_col: Union[str, None] = None,
+                 amount_in_col: Union[str, None] = None,
+                 amount_out_col: Union[str, None] = None,
+                 stmt_desc_cols: Union[list[str], None] = None,
                  stmt_date_col: Union[str, None] = None,
-                 remove_delimiter_from: Union[str, list[str]] = None,
-                 skiprows: int = 0, dictreader_args: dict = None, encoding: str = "utf-8"):
+                 remove_delimiter_from: Union[str, list[str], None] = None,
+                 skiprows: int = 0,
+                 dictreader_args: Union[dict[str, str], None] = None,
+                 encoding: str = "utf-8"):
         if amount_col is not None and (amount_in_col is not None or amount_out_col is not None):
             raise ValueError("amount_col cannot be used with amount_in_col or amount_out_col.")
         if amount_col is None and (amount_in_col is None or amount_out_col is None):
@@ -35,7 +39,10 @@ class BankCsv():
         self.amount_out_col = amount_out_col
         self.stmt_desc_cols = stmt_desc_cols or []
         self.stmt_date_col = stmt_date_col
-        self.remove_delimiter_from = remove_delimiter_from or []
+        if isinstance(remove_delimiter_from, str):
+            self.remove_delimiter_from = [remove_delimiter_from]
+        else:
+            self.remove_delimiter_from = remove_delimiter_from or []
         self.skiprows = skiprows
         self.dictreader_args = dictreader_args or {}
 

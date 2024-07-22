@@ -12,6 +12,10 @@ def test_posting():
     assert isinstance(p1.acc_qname, QName)
     assert p1.acc_qname == p2.acc_qname
 
+    # Change name using string
+    p1.acc_qname = "D:E:F"
+    assert p1.acc_qname == QName("D:E:F")
+
 
 def test_txn():
     p1 = Posting(txnid=1, date=date(2021, 1, 1), acc_qname="A:A1", amount=Decimal("100.00"))
@@ -71,3 +75,7 @@ def test_rposting():
     assert ps[0].date == date(2021, 1, 1)
     assert ps[1].date == date(2021, 3, 1)
     assert ps[2].date == date(2021, 5, 1)
+
+    # Change name using string
+    r1.acc_qname = "D:E:F"
+    assert r1.acc_qname == QName("D:E:F")

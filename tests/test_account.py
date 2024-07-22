@@ -1,10 +1,11 @@
 import pytest
 from brightsidebudget import QName
+from brightsidebudget.account import Account
 
 
 def test_qname():
     qname = QName("A:B:C")
-    assert qname.qname == "A:B:C"
+    assert qname.qstr == "A:B:C"
     assert qname.qlist == ["A", "B", "C"]
     assert qname.depth == 3
     assert qname.parent == QName("A:B")
@@ -30,3 +31,11 @@ def test_qname():
 
     with pytest.raises(ValueError):
         QName([])
+
+
+def test_account():
+    acc = Account(qname="A:B:C")
+
+    # Change name using string
+    acc.qname = "D:E:F"
+    assert acc.qname == QName("D:E:F")

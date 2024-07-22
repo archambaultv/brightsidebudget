@@ -457,17 +457,19 @@ class Journal():
             return None
 
         if child is None:
-            child = b.acc_qname
+            child = self.full_qname(b.acc_qname)
         else:
             if isinstance(child, str):
                 child = QName(qname=child)
 
+            child = self.full_qname(child)
             if not child.is_equal_or_descendant_of(b.acc_qname):
                 raise ValueError(f'Child account {child} must be a descendant of {b.acc_qname}')
 
         if isinstance(counterpart, str):
             counterpart = QName(qname=counterpart)
 
+        counterpart = self.full_qname(counterpart)
         txnid = self.next_txn_id
         p1 = Posting(txnid=txnid, date=b.date, acc_qname=child, amount=diff,
                      comment=comment)

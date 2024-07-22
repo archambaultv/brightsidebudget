@@ -51,6 +51,22 @@ def test_adjust_for_bassertion(accounts_file, txns_file):
     assert len(j.postings) == 10
 
 
+def test_adjust_for_bassertion_child(accounts_file, txns_file):
+    j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
+    b = BAssertion(date=date(2021, 1, 3), acc_qname='Assets', balance=Decimal(467461))
+    t = j.adjust_for_bassertion(b, counterpart='Salary', child='Checking',
+                                comment='Adjustment for bassertion')
+    assert t.txnid == 3
+    assert t.date == date(2021, 1, 3)
+    assert t.postings[0].acc_qname.qstr == 'Assets:Checking'
+    assert t.postings[0].amount == Decimal(1)
+    assert t.postings[0].comment == 'Adjustment for bassertion'
+    assert t.postings[1].acc_qname.qstr == 'Revenue:Salary'
+    assert t.postings[1].amount == Decimal(-1)
+    assert t.postings[1].comment == 'Adjustment for bassertion'
+    assert len(j.postings) == 10
+
+
 def test_empty_journal():
     j = Journal()
     assert len(j.accounts) == 0

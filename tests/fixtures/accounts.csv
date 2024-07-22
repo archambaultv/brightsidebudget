@@ -1,18 +1,18 @@
 Compte,Numéro,Compte nom court
-Assets,1000
-Assets:Checking,1005
-Assets:Savings,1006
-Assets:House,1200
-Liabilities,2000
-Liabilities:Credit card,2005
-Liabilities:Long term debt,2050
-Liabilities:Long term debt:Mortgage,2051
-Equity,3000
-Equity:Opening balance,Equity
-Revenue,4000
-Revenue:Salary,4005
-Expenses,5000
-Expenses:Utilities,5005
-Expenses:Rent,5006
-Expenses:Food,5007
+Assets,1000,
+Assets:Checking,1005,
+Assets:Savings,1006,
+Assets:House,1200,
+Liabilities,2000,
+Liabilities:Credit card,2005,
+Liabilities:Long term debt,2050,
+Liabilities:Long term debt:Mortgage,2051,
+Equity,3000,
+Equity:Opening balance,3005,
+Revenue,4000,
+Revenue:Salary,4005,
+Expenses,5000,
+Expenses:Utilities,5005,
+Expenses:Rent,5006,
+Expenses:Food,5007,
 Expenses:Other,5008,Expenses:Other

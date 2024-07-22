@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
+## [0.4.7]
+### Fixed
+- `from_csv` method of `Journal` now correctly reads empty `short_qname`.
+
 ## [0.4.6]
 ### Added
 - Added `short_qname` attribute to `Account` to limit the shortest qualified

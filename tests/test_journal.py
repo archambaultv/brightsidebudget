@@ -1,6 +1,6 @@
 from datetime import date
 from decimal import Decimal
-from brightsidebudget import Journal
+from brightsidebudget import Journal, BAssertion
 
 
 def test_from_csv(accounts_file, txns_file, bassertions_file):
@@ -33,6 +33,22 @@ def test_balance(accounts_file, txns_file):
     assert j.balance(date(2021, 1, 2), 'Assets:Savings') == Decimal(15000)
     assert j.balance(date(2021, 1, 2), 'Assets:House') == Decimal(450000)
     assert j.balance(date(2021, 1, 2), 'Assets') == Decimal(467460)
+
+
+def test_adjust_for_bassertion(accounts_file, txns_file):
+    j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
+    b = BAssertion(date=date(2021, 1, 3), acc_qname='Checking', balance=Decimal(4460))
+    t = j.adjust_for_bassertion(b, counterpart='Salary', child=None,
+                                comment='Adjustment for bassertion')
+    assert t.txnid == 3
+    assert t.date == date(2021, 1, 3)
+    assert t.postings[0].acc_qname.qstr == 'Assets:Checking'
+    assert t.postings[0].amount == Decimal(2000)
+    assert t.postings[0].comment == 'Adjustment for bassertion'
+    assert t.postings[1].acc_qname.qstr == 'Revenue:Salary'
+    assert t.postings[1].amount == Decimal(-2000)
+    assert t.postings[1].comment == 'Adjustment for bassertion'
+    assert len(j.postings) == 10
 
 
 def test_empty_journal():

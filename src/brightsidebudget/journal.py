@@ -441,7 +441,7 @@ class Journal():
 
     def adjust_for_bassertion(self, b: BAssertion, counterpart: Union[QName, str],
                               child: Union[QName, str, None] = None,
-                              comment: Union[str, None] = None):
+                              comment: Union[str, None] = None) -> Union[Txn, None]:
         """
         Adjusts the journal to match the balance assertion. The account object in
         the balance assertion can be a string or any object with a 'qname'.
@@ -451,10 +451,10 @@ class Journal():
         It must be a descendant of the account in the balance assertion.
         """
 
-        actual = self.balance(b.date, b.acc_qname, stmt_date=True)
+        actual = self.balance(b.date, b.acc_qname, use_stmt_date=True)
         diff = b.balance - actual
         if diff == 0:
-            return
+            return None
 
         if child is None:
             child = b.acc_qname
@@ -468,11 +468,14 @@ class Journal():
         if isinstance(counterpart, str):
             counterpart = QName(qname=counterpart)
 
-        p1 = Posting(txnid=None, date=b.date, acc_qname=child, amount=diff,
+        txnid = self.next_txn_id
+        p1 = Posting(txnid=txnid, date=b.date, acc_qname=child, amount=diff,
                      comment=comment)
-        p2 = Posting(txnid=None, date=b.date, acc_qname=counterpart, amount=-diff,
+        p2 = Posting(txnid=txnid, date=b.date, acc_qname=counterpart, amount=-diff,
                      comment=comment)
-        self.add_txns(Txn([p1, p2]))
+        t = Txn([p1, p2])
+        self.add_txns(t, ignore_txnid=False)
+        return t
 
     def export_for_excel(self, *,
                          budget: Union[tuple[date, date], None] = None,

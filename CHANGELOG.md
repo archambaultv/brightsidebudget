@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
+## [0.4.5]
+### Fixed
+- Fixed `adjust_for_bassertion` when called with a child parameter with a
+  shortened qualified name.
+
 ## [0.4.4]
 ### Fixed
 - `adjust_for_bassertion` correctly calls `balance` method of `Journal`

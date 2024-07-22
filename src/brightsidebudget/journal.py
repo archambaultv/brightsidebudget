@@ -293,7 +293,7 @@ class Journal():
             for row in reader:
                 qname = row['Compte']
                 if 'Compte nom court' in row:
-                    short_qname = row['Compte nom court']
+                    short_qname = empty_is_none(row['Compte nom court'])
                 else:
                     short_qname = None
                 d = row.copy()

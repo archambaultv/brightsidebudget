@@ -61,19 +61,23 @@ class QName():
             return None
         return QName(self._qlist[:-1])
 
-    def is_descendant_of(self, parent: 'QName') -> bool:
+    def is_descendant_of(self, parent: Union['QName', str]) -> bool:
         """
         Returns True if this QName is a descendant of the parent QName.
         """
+        if isinstance(parent, str):
+            parent = QName(parent)
         if self.depth <= parent.depth:
             # You can't be a descendant if you have fewer or equal elements
             return False
         return self._qlist[:parent.depth] == parent._qlist
 
-    def is_equal_or_descendant_of(self, qname: 'QName') -> bool:
+    def is_equal_or_descendant_of(self, qname: Union['QName', str]) -> bool:
         """
         Returns True if this QName is the qname or a descendant.
         """
+        if isinstance(qname, str):
+            qname = QName(qname)
         return self == qname or self.is_descendant_of(qname)
 
     def __eq__(self, other) -> bool:

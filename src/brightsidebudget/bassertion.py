@@ -32,4 +32,4 @@ class BAssertion():
         return self.__str__()
 
     def copy(self) -> 'BAssertion':
-        return BAssertion(date=self.date, acc_qname=self.acc_qname, balance=self.balance)
+        return BAssertion(date=self.date, acc_qname=self._acc_qname, balance=self.balance)

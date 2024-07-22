@@ -6,8 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
-## [0.4.1]
+## [0.4.2]
+### Changed
+- `is_descendant_of` and `is_equal_or_descendant_of` method of `QName` now
+  accept a string as argument.
 
+## [0.4.1]
 ### Changed
 - `qname` attribute of `QName` is now called `qstr` (breaking change).
 

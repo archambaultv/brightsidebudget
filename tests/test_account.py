@@ -12,9 +12,11 @@ def test_qname():
     assert qname.parent.parent == QName("A")
     assert qname.is_descendant_of(QName("A"))
     assert qname.is_descendant_of(QName("A:B"))
+    assert qname.is_descendant_of("A:B")
     assert not qname.is_descendant_of(QName("A:B:C"))
     assert not qname.is_descendant_of(QName("A:B:D"))
     assert qname.is_equal_or_descendant_of(QName("A:B:C"))
+    assert qname.is_equal_or_descendant_of("A:B:C")
 
     assert QName("A").depth == 1
     assert QName("A").parent is None

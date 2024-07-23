@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
+## [0.5.1]
+### Fixed
+- polars dependency correctly requires excel component.
+
 ## [0.5.0]
 ### Added
 - Add `to_polars` method to `Journal` class to convert the postings to a Polars

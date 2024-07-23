@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
+## [0.5.0]
+### Added
+- Add `to_polars` method to `Journal` class to convert the postings to a Polars
+  DataFrame.
+- Add multiple helper functions to generate reports from a polars DataFrame.
+
+### Removed
+- Remove `export_for_excel` method of `Journal` class. Use `write_excel` from a
+  polars DataFrame instead.
+
+### Changed
+- CSV names are now in English. i18n support could be added later.
+
 ## [0.4.7]
 ### Fixed
 - `from_csv` method of `Journal` now correctly reads empty `short_qname`.

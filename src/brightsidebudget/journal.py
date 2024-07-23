@@ -1,4 +1,5 @@
 import csv
+import polars as pl
 from datetime import date
 from decimal import Decimal
 from typing import Callable, Union
@@ -291,14 +292,14 @@ class Journal():
         with open(accounts, 'r', encoding=encoding) as f:
             reader = csv.DictReader(f)
             for row in reader:
-                qname = row['Compte']
-                if 'Compte nom court' in row:
-                    short_qname = empty_is_none(row['Compte nom court'])
+                qname = row['Account']
+                if 'Account short name' in row:
+                    short_qname = empty_is_none(row['Account short name'])
                 else:
                     short_qname = None
                 d = row.copy()
-                for x in ['Compte', 'Compte nom court']:
-                    d.pop('Compte', None)
+                for x in ['Account', 'Account short name']:
+                    d.pop(x, None)
                 accs.append(Account(qname=qname, tags=d, short_qname=short_qname))
         j.add_accounts(accs)
 
@@ -309,16 +310,16 @@ class Journal():
                 for row in reader:
                     txn_id = int(row['Txn'])
                     dt = date.fromisoformat(row['Date'])
-                    acc = row['Compte']
-                    amnt = Decimal(row['Montant'])
-                    comment = empty_is_none(row.get('Commentaire'))
-                    stmt_desc = empty_is_none(row.get('Description du relevé'))
-                    stmt_date = empty_is_none(row.get('Date du relevé'))
+                    acc = row['Account']
+                    amnt = Decimal(row['Amount'])
+                    comment = empty_is_none(row.get('Comment'))
+                    stmt_desc = empty_is_none(row.get('Stmt description'))
+                    stmt_date = empty_is_none(row.get('Stmt date'))
                     if stmt_date:
                         stmt_date = date.fromisoformat(stmt_date)
                     d = row.copy()
-                    for x in ['Txn', 'Date', 'Compte', 'Montant', 'Commentaire',
-                              'Description du relevé', 'Date du relevé']:
+                    for x in ['Txn', 'Date', 'Account', 'Amount', 'Comment',
+                              'Stmt description', 'Stmt date']:
                         d.pop(x, None)
                     p = Posting(txnid=txn_id, date=dt, acc_qname=acc, amount=amnt,
                                 stmt_desc=stmt_desc, stmt_date=stmt_date, comment=comment,
@@ -332,8 +333,8 @@ class Journal():
                 reader = csv.DictReader(f)
                 for row in reader:
                     dt = date.fromisoformat(row['Date'])
-                    acc = row['Compte']
-                    balance = Decimal(row['Solde'])
+                    acc = row['Account']
+                    balance = Decimal(row['Balance'])
                     bs.append(BAssertion(date=dt, acc_qname=acc, balance=balance))
             j.add_bassertions(bs)
 
@@ -343,23 +344,23 @@ class Journal():
                 reader = csv.DictReader(f)
 
                 for row in reader:
-                    start = date.fromisoformat(row['Début'])
-                    acc = row['Compte']
-                    amount = Decimal(row['Montant'])
-                    comment = empty_is_none(row.get('Commentaire'))
-                    frequency = empty_is_none(row.get('Fréquence'))
-                    interval = empty_is_none(row.get('Intervalle'))
+                    start = date.fromisoformat(row['Start date'])
+                    acc = row['Account']
+                    amount = Decimal(row['Amount'])
+                    comment = empty_is_none(row.get('Comment'))
+                    frequency = empty_is_none(row.get('Frequency'))
+                    interval = empty_is_none(row.get('Interval'))
                     if interval:
                         interval = int(interval)
-                    count = empty_is_none(row.get('Nb occurrences'))
+                    count = empty_is_none(row.get('Count'))
                     if count:
                         count = int(count)
-                    until = empty_is_none(row.get('Date de fin'))
+                    until = empty_is_none(row.get('Until'))
                     if until:
                         until = date.fromisoformat(until)
                     d = row.copy()
-                    for x in ['Début', 'Compte', 'Montant', 'Commentaire', 'Fréquence',
-                              'Intervalle', 'Nb occurrences', 'Date de fin']:
+                    for x in ['Start date', 'Account', 'Amount', 'Comment', 'Frequency',
+                              'Interval', 'Count', 'Until']:
                         d.pop(x, None)
                     ts.append(RPosting(start=start, acc_qname=acc, amount=amount,
                                        comment=comment, frequency=frequency, interval=interval,
@@ -494,110 +495,99 @@ class Journal():
         self.add_txns(t, ignore_txnid=False)
         return t
 
-    def export_for_excel(self, *,
-                         budget: Union[tuple[date, date], None] = None,
-                         budget_counterpart: Union[QName, str, None] = None,
-                         file: str = "txns.csv",
-                         use_short_qname: bool = True,
-                         encoding="utf8",
-                         aliases: Union[list[tuple[str, dict[QName, QName]]], None] = None,
-                         today: Union[date, None] = None,
-                         first_fiscal_month: int = 1):
+    def all_postings_tags(self, ps: Union[list[Posting], None] = None) -> list[str]:
         """
-        Write a list of postings to a CSV file.
+        Returns a list of all tags used in the postings.
+        If ps is None, the function uses all the postings in the journal.
         """
-        if today is None:
-            today = date.today()
+        if ps is None:
+            ps = self.postings
+        return list({k for p in ps for k in p.tags.keys()})
 
-        if aliases is None:
-            aliases = []
+    def all_accounts_tags(self, accs: Union[list[Account], None] = None) -> list[str]:
+        """
+        Returns a list of all tags used in the accounts.
+        If accs is None, the function uses all the accounts in the journal.
+        """
+        if accs is None:
+            accs = self.accounts
+        return list({k for a in accs for k in a.tags.keys()})
 
-        ps = [p.copy() for p in self.postings]
+    def to_polars(self, ps: Union[list[Posting], None] = None) -> pl.DataFrame:
+        """
+        Returns a polars DataFrame with the postings, including all tags from
+        both the postings and the accounts. In the case of a tag name conflict,
+        the account tag is suffix with '_acc'.
+
+        If `ps` is None, the function uses all the postings in the journal.
+
+        The columns are:
+            - Txn: Transaction ID
+            - Date: Posting date
+            - Account: Account full qualified name
+            - Account short name: Account short qualified name
+            - Account {i}: Account group i, based on the qualified name
+            - Amount: Posting amount
+            - Comment: Posting comment
+            - Stmt date: Statement date
+            - Stmt description: Statement description
+            - All tags from the postings
+            - All tags from the accounts
+        """
+        if ps is None:
+            ps = self.postings
+        ps_keys = self.all_postings_tags(ps)
+        accs_keys = self.all_accounts_tags()
+        key_map = {k: k for k in ps_keys}
+        for k in accs_keys:
+            my_key = k
+            if my_key in key_map:
+                my_key += '_acc'
+                if my_key in key_map:
+                    my_key += '2'
+                    i = 3
+                    while my_key in key_map:
+                        my_key[:-1] += str(i)
+                        i += 1
+            key_map[k] = my_key
+
+        max_depth = max((a.qname.depth for a in self.accounts), default=0)
+
+        data = []
         for p in ps:
-            p.tags["Txn type"] = "réel"
-        if budget is not None:
-            if budget_counterpart is None:
-                raise ValueError("budget_counterpart must be provided if budget is not None")
-            bTxns = self.budget_txns(start_date=budget[0], end_date=budget[1],
-                                     counterpart=budget_counterpart)
-            for t in bTxns:
-                for p in t.postings:
-                    p.tags["Txn type"] = "budget"
-                    ps.append(p)
-
-        ps.sort(key=lambda p: (p.date, p.txnid, p.acc_qname.qstr))
-
-        def alias(qname: QName, d: dict[QName, QName]) -> QName:
-            if qname in d:
-                return d[qname]
-            else:
-                return qname
-
-        def max_depth(qname: list[QName]) -> int:
-            return max((a.depth for a in qname), default=0)
-
-        def all_p_tags(ps: list[Posting]) -> list[str]:
-            return list({k for p in ps for k in p.tags.keys()})
-
-        def all_a_tags(accs: list[Account]) -> list[str]:
-            return list({k for a in accs for k in a.tags.keys()})
-
-        ffm = first_fiscal_month
-        with open(file, "w", encoding=encoding) as f:
-            writer = csv.writer(f, lineterminator="\n")
-            header = ["Txn", "Date", "Compte"]
-            maxdepth = max_depth([p.acc_qname for p in ps])
-            header += [f"Compte {i}" for i in range(1, maxdepth + 1)]
-            header += ["Montant", "Date du relevé", "Commentaire", "Description du relevé"]
-            p_tag_keys = all_p_tags(ps)
-            header += p_tag_keys
-            a_tag_keys = all_a_tags(self.accounts)
-            header += a_tag_keys
-            header += ["Année", "Mois", "Année-Mois", "Mois relatif", "Année fiscale",
-                       "Mois fiscal", "Date future"]
-            for a, alias_dict in aliases:
-                ps2 = [alias(p.acc_qname, alias_dict) for p in ps]
-                md2 = max_depth(ps2)
-                header.append(a)
-                header += [f"{a} {i}" for i in range(1, md2 + 1)]
-            writer.writerow(header)
-            for p in ps:
-                account = self.account(p.acc_qname)
-                if ffm == 1 or p.date.month < ffm:
-                    fiscal_year = p.date.year
-                else:
-                    fiscal_year = p.date.year + 1
-
-                fiscal_month = ((p.date.month - ffm) % 12) + 1
-                rel_month = (p.date.year - today.year) * 12 + (p.date.month - today.month)
-                row = [p.txnid, p.date]
-                if use_short_qname:
-                    row.append(self.short_qname(p.acc_qname))
-                else:
-                    row.append(p.acc_qname)
-                groups = p.acc_qname.qlist
-                if len(groups) < maxdepth:
-                    groups += [None for _ in range(maxdepth - len(groups))]
-                row += groups
-                row += [p.amount, p.stmt_date, p.comment, p.stmt_desc]
-                for k in p_tag_keys:
-                    row.append(p.tag(k))
-
-                for k in a_tag_keys:
-                    row.append(account.tag(k))
-                row += [p.date.year, p.date.month, f"{p.date.year}-{p.date.month:02d}",
-                        rel_month, fiscal_year, fiscal_month, p.date > today]
-                for a, alias_dict in aliases:
-                    a2 = alias(p.acc_qname, alias_dict)
-                    if use_short_qname:
-                        row.append(self.short_qname(a2))
-                    else:
-                        row.append(a2)
-                    groups2 = a2.qlist
-                    if len(groups2) < md2:
-                        groups2 += [None for _ in range(md2 - len(groups2))]
-                    row += groups2
-                writer.writerow(row)
+            d = {
+                'Txn': p.txnid,
+                'Date': p.date,
+                'Account': p.acc_qname.qstr,
+                'Account short name': self.short_qname(p.acc_qname).qstr,
+                'Amount': float(p.amount),
+                'Comment': p.comment,
+                'Stmt date': p.stmt_date,
+                'Stmt description': p.stmt_desc,
+                **p.tags
+            }
+            for i, group in enumerate(p.acc_qname.qlist):
+                d[f'Account {i + 1}'] = group
+            acc = self.account(p.acc_qname)
+            for k in accs_keys:
+                d[key_map[k]] = acc.tag(k)
+            data.append(d)
+        # Define schema
+        schema = {
+            'Txn': pl.UInt32,
+            'Date': pl.Date,
+            'Account': pl.Utf8,
+            'Account short name': pl.Utf8,
+            'Amount': pl.Float64,
+            'Comment': pl.Utf8,
+            'Stmt date': pl.Date,
+            'Stmt description': pl.Utf8
+        }
+        for i in range(1, max_depth + 1):
+            schema[f'Account {i}'] = pl.Utf8
+        for k in key_map.values():
+            schema[k] = pl.Utf8
+        return pl.DataFrame(data, schema=schema)
 
     def write_txns(self, *,
                    txns: Union[list[Txn], None] = None,
@@ -606,7 +596,7 @@ class Journal():
                    renumber: bool = False,
                    encoding="utf8"):
         """
-        Write the postings to a CSV file.
+        Write the postings to a one or more CSV files.
         """
         if txns is None:
             txns = self.txns_dict.values()
@@ -634,15 +624,12 @@ class Journal():
                 ids[t.txnid] = idx
                 idx += 1
 
-        def all_p_tags(ps: list[Posting]) -> list[str]:
-            return list({k for p in ps for k in p.tags.keys()})
-
         for file, ps in file_dict.items():
             with open(file, "w", encoding=encoding) as f:
                 writer = csv.writer(f, lineterminator="\n")
-                header = ["Txn", "Date", "Compte", "Montant", "Date du relevé",
-                          "Commentaire", "Description du relevé"]
-                p_tag_keys = all_p_tags(ps)
+                header = ['Txn', 'Date', 'Account', 'Amount', 'Stmt date', 'Comment',
+                          'Stmt description']
+                p_tag_keys = self.all_postings_tags(ps)
                 header += p_tag_keys
                 writer.writerow(header)
                 for p in ps:

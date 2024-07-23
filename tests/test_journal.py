@@ -3,11 +3,13 @@ from decimal import Decimal
 from brightsidebudget import Journal, BAssertion
 
 
-def test_from_csv(accounts_file, txns_file, bassertions_file):
-    j = Journal.from_csv(accounts=accounts_file, postings=txns_file, bassertions=bassertions_file)
+def test_from_csv(accounts_file, txns_file, bassertions_file, budget_file):
+    j = Journal.from_csv(accounts=accounts_file, postings=txns_file,
+                         bassertions=bassertions_file, targets=budget_file)
     assert len(j.accounts) == 17
     assert len(j.postings) == 8
     assert len(j.bassertions) == 6
+    assert len(j.targets) == 4
 
 
 def test_check_balances(accounts_file, txns_file, bassertions_file):
@@ -96,3 +98,16 @@ def test_no_bassertions(accounts_file, txns_file):
     assert len(j.accounts) == 17
     assert len(j.postings) == 8
     assert len(j.bassertions) == 0
+
+
+def test_to_polars(accounts_file, txns_file):
+    j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
+    df = j.to_polars()
+
+    assert len(df) == 8
+    expected_cols = ['Txn', 'Date', 'Account',  'Account short name',
+                     'Account 1', 'Account 2', 'Account 3', 'Amount', 'Comment',
+                     'Stmt date', 'Stmt description', 'Number']
+    assert len(df.columns) == len(expected_cols)
+    for x in expected_cols:
+        assert x in df.columns

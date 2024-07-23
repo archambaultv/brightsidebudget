@@ -24,3 +24,8 @@ def bassertions_file() -> str:
 @pytest.fixture()
 def txns_file() -> str:
     return "tests/fixtures/txns.csv"
+
+
+@pytest.fixture()
+def budget_file() -> str:
+    return "tests/fixtures/budget.csv"

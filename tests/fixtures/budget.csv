@@ -1,0 +1,5 @@
+Start date,Account,Amount,Comment,Frequency,Interval,Count,Until
+2021-01-01,Checking,5500,Salary,monthly,1,
+2021-01-01,Savings,650,Salary,monthly,1,
+2021-01-01,Food,1300,,monthly,1,
+2021-01-01,Mortgage,500,,weekly,2

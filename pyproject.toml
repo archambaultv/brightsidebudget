@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "brightsidebudget"
-version = "0.5.0"
+version = "0.5.1"
 authors = [
   { name="Vincent Archambault-B", email="vincentarchambault@icloud.com" },
 ]
@@ -20,7 +20,7 @@ classifiers = [
 keywords = ["budgeting", "accounting", "finance"]
 dependencies = [
   "python-dateutil",
-  "polars",
+  "polars[excel]",
 ]
 requires-python = ">=3.9"
 

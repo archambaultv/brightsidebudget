@@ -1,6 +1,7 @@
 from datetime import date
 from dateutil.relativedelta import relativedelta
 import polars as pl
+from brightsidebudget import Journal
 import brightsidebudget.report as r
 
 
@@ -252,3 +253,10 @@ def test_budget_report():
         '{2022,"budget"}': [2280.0, None],
     })
     assert result.equals(expected)
+
+
+def test_write_excel(accounts_file, txns_file, tmp_path):
+    j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
+    df = j.to_polars()
+    tmp_file = tmp_path / "test.xlsx"
+    df.write_excel(tmp_file)

@@ -119,3 +119,46 @@ def flow_report(df: pl.DataFrame,
     return df.pivot(on=on, index=index, values="Amount", aggregate_function="sum",
                     maintain_order=maintain_order,
                     sort_columns=sort_columns)
+
+
+def budget_report(df: pl.DataFrame,
+                  on: Union[str, list[str]] = "Year",
+                  index: Union[str, list[str]] = "Account short name",
+                  txn_type_col: str = "Txn type",
+                  cumulative: bool = False,
+                  maintain_order: bool = True,
+                  sort_columns: bool = True) -> pl.DataFrame:
+    """
+    Generate a budget report from a dataframe based on the pivot method.
+
+    The columns must exists in the dataframe, except for the default "Year"
+    column of `on` parameter which will be added if not present.
+
+    If `cumulative` is True, the balance will be cumulative. Note that in this
+    case, if the dataframe contains 'actual' transactions prior to the start of
+    the budget period, they will be included in the 'actual' cumulative balance.
+    """
+    if on == "Year" and "Year" not in df.columns:
+        df = add_year_column(df)
+
+    if isinstance(on, str):
+        on = [on]
+    on = on + [txn_type_col]
+
+    balance_col = "Balance"
+    while balance_col in df.columns:
+        balance_col += "_"
+
+    if isinstance(index, str):
+        index = [index]
+
+    if cumulative:
+        agg_func = "last"
+        df = (df.sort(by=index + [txn_type_col, "Date"])
+                .with_columns(
+                    pl.col("Amount").cum_sum().over(index + [txn_type_col]).alias(balance_col)))
+    else:
+        agg_func = "sum"
+        balance_col = "Amount"
+    return df.pivot(on=on, index=index, values=balance_col, aggregate_function=agg_func,
+                    maintain_order=maintain_order, sort_columns=sort_columns)

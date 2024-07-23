@@ -513,17 +513,16 @@ class Journal():
             accs = self.accounts
         return list({k for a in accs for k in a.tags.keys()})
 
-    def to_polars(self,
-                  budget: Union[tuple[date, date, Union[QName, str]], None] = None
-                  ) -> pl.DataFrame:
+    def to_polars(self, ps: Union[list[Posting], None] = None) -> pl.DataFrame:
         """
         Returns a polars DataFrame with the postings, including all tags from
         both the postings and the accounts. In the case of a tag name conflict,
         the account tag is suffix with '_acc'.
 
+        If `ps` is None, the function uses all the postings in the journal.
+
         The columns are:
             - Txn: Transaction ID
-            - Txn type: Transaction type, 'actual' or 'budget'
             - Date: Posting date
             - Account: Account full qualified name
             - Account short name: Account short qualified name
@@ -535,15 +534,9 @@ class Journal():
             - All tags from the postings
             - All tags from the accounts
         """
-        ps_actual: list[Posting] = self.postings
-        ps_budget: list[Posting] = []
-        if budget is not None:
-            start, end, acc = budget
-            if isinstance(acc, str):
-                acc = QName(qname=acc)
-            txns = self.budget_txns(start, end, acc)
-            ps_budget = [p for t in txns for p in t.postings]
-        ps_keys = self.all_postings_tags(ps_actual + ps_budget)
+        if ps is None:
+            ps = self.postings
+        ps_keys = self.all_postings_tags(ps)
         accs_keys = self.all_accounts_tags()
         key_map = {k: k for k in ps_keys}
         for k in accs_keys:
@@ -561,30 +554,27 @@ class Journal():
         max_depth = max((a.qname.depth for a in self.accounts), default=0)
 
         data = []
-        for type, ps in [('actual', ps_actual), ('budget', ps_budget)]:
-            for p in ps:
-                d = {
-                    'Txn': p.txnid,
-                    'Txn type': type,
-                    'Date': p.date,
-                    'Account': p.acc_qname.qstr,
-                    'Account short name': self.short_qname(p.acc_qname).qstr,
-                    'Amount': float(p.amount),
-                    'Comment': p.comment,
-                    'Stmt date': p.stmt_date,
-                    'Stmt description': p.stmt_desc,
-                    **p.tags
-                }
-                for i, group in enumerate(p.acc_qname.qlist):
-                    d[f'Account {i + 1}'] = group
-                acc = self.account(p.acc_qname)
-                for k in accs_keys:
-                    d[key_map[k]] = acc.tag(k)
-                data.append(d)
+        for p in ps:
+            d = {
+                'Txn': p.txnid,
+                'Date': p.date,
+                'Account': p.acc_qname.qstr,
+                'Account short name': self.short_qname(p.acc_qname).qstr,
+                'Amount': float(p.amount),
+                'Comment': p.comment,
+                'Stmt date': p.stmt_date,
+                'Stmt description': p.stmt_desc,
+                **p.tags
+            }
+            for i, group in enumerate(p.acc_qname.qlist):
+                d[f'Account {i + 1}'] = group
+            acc = self.account(p.acc_qname)
+            for k in accs_keys:
+                d[key_map[k]] = acc.tag(k)
+            data.append(d)
         # Define schema
         schema = {
             'Txn': pl.UInt32,
-            'Txn type': pl.Utf8,
             'Date': pl.Date,
             'Account': pl.Utf8,
             'Account short name': pl.Utf8,

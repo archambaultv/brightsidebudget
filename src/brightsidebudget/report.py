@@ -134,6 +134,9 @@ def budget_report(df: pl.DataFrame,
     The columns must exists in the dataframe, except for the default "Year"
     column of `on` parameter which will be added if not present.
 
+    'txn_type_col' is the column that contains the transaction type (ex:
+    'actual', 'budget').
+
     If `cumulative` is True, the balance will be cumulative. Note that in this
     case, if the dataframe contains 'actual' transactions prior to the start of
     the budget period, they will be included in the 'actual' cumulative balance.

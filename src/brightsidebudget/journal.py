@@ -23,8 +23,12 @@ class Journal():
         self.targets: list[RPosting] = []
         self.bassertions: list[BAssertion] = []
         self.txns_dict: dict[int, Txn] = {}
-        self.full_qname_set: set[QName] = set()
-        self.short_qname_dict: dict[QName, Account] = {}
+        # _full_qname_dict: A dictionary that maps a full qualified name to an
+        # account
+        self._full_qname_dict: dict[QName, Account] = {}
+        # _short_qname_dict: A dictionary that maps a short qualified name to a
+        # list of matching accounts
+        self._short_qname_dict: dict[QName, list[Account]] = {}
         self._next_txn_id = 1
 
     @property
@@ -50,25 +54,30 @@ class Journal():
         """
         if isinstance(qname, str):
             qname = QName(qname=qname)
-        try:
-            return self.short_qname_dict[qname]
-        except KeyError as e:
-            raise ValueError(f'Account {qname} does not exist or is ambiguous') from e
 
-    def has_account(self, qname: Union[QName, str], full_qname: bool = False) -> bool:
+        if qname in self._full_qname_dict:
+            return self._full_qname_dict[qname]
+        elif qname in self._short_qname_dict:
+            ls = self._short_qname_dict[qname]
+            if len(ls) == 1:
+                return ls[0]
+            raise ValueError(f'Account {qname} is ambiguous')
+        else:
+            raise ValueError(f'Account {qname} does not exist')
+
+    def is_valid_qname(self, qname: Union[QName, str]) -> bool:
         """
-        Returns True if the account exists in the journal.
-
-        full_qname: If True, the qname is considered as a full qualified name
-        and must match exactly. If False, the qname is considered as a short
-        qualified name and can match any account that has the same short name.
+        Returns True if the qualified name uniquely identifies a single account.
         """
         if isinstance(qname, str):
             qname = QName(qname=qname)
-        if full_qname:
-            return qname in self.full_qname_set
+
+        if qname in self._full_qname_dict:
+            return True
+        elif qname in self._short_qname_dict:
+            return len(self._short_qname_dict[qname]) == 1
         else:
-            return qname in self.short_qname_dict
+            return False
 
     def short_qname(self, qname: Union[QName, str],
                     min_length: int = 1) -> QName:
@@ -80,22 +89,23 @@ class Journal():
             raise ValueError('min_length must be greater than 0')
 
         # We try all possible short names starting from shortest to longest
-        # We know the full qname is unique, so we will find a match
         acc = self.account(qname)
         qlist = acc.qname._qlist
         min_length = min(min_length, len(qlist))
-        for i in range(min_length, len(qlist) + 1):
+        for i in range(min_length, len(qlist)):
             short_name = QName(qlist[-i:])
-            if short_name in self.short_qname_dict:
+            if short_name in self._full_qname_dict:
+                continue
+            if len(self._short_qname_dict[short_name]) == 1:
                 return short_name
+        # No short name found
+        return acc.qname
 
     def full_qname(self, qname: Union[QName, str]) -> QName:
         """
         Returns the full qualified name of an account.
         """
-        if isinstance(qname, str):
-            qname = QName(qname=qname)
-        return self.short_qname_dict[qname].qname
+        return self.account(qname).qname
 
     def is_leaf_account(self, qname: Union[QName, str]) -> bool:
         """
@@ -117,33 +127,21 @@ class Journal():
             accounts = [a.copy() for a in accounts]
 
         for a in accounts:
-            if a.qname in self.full_qname_set:
+            if a.qname in self._full_qname_dict:
                 raise ValueError(f'Account {a.qname} already exists')
             # Check immediate parent exists
             parent = a.qname.parent
-            if parent and parent not in self.short_qname_dict:
-                raise ValueError(f'Parent account {parent} does not exist or is ambiguous')
+            if parent and parent not in self._full_qname_dict:
+                raise ValueError(f'Parent account {parent} does not exist')
 
-            self.full_qname_set.add(a.qname)
+            self._full_qname_dict[a.qname] = a
             self.accounts.append(a)
-
-            # Now we need to update the short_qname_dict.
-            # We know the full qname is unique, so let's add it
-            self.short_qname_dict[a.qname] = a
-
-            # But the short qname may not be unique. We go from the shortest
-            # qname to just before the full qname, removing any ambiguity.
             qlist = a.qname.qlist
             for idx in range(1, len(qlist)):
                 short_name = QName(qlist[-idx:])
-                if short_name in self.full_qname_set:
-                    # Cannot overwrite a full qname
-                    continue
-                if short_name in self.short_qname_dict:
-                    # Short name already exists, remove it to avoid ambiguity
-                    del self.short_qname_dict[short_name]
-                else:
-                    self.short_qname_dict[short_name] = a
+                if short_name not in self._short_qname_dict:
+                    self._short_qname_dict[short_name] = []
+                self._short_qname_dict[short_name].append(a)
 
     def add_txns(self, txns: Union[Txn, list[Txn]],
                  copy: bool = False,
@@ -168,7 +166,7 @@ class Journal():
                 elif p.txnid in self.txns_dict:
                     raise ValueError(f'Transaction {p.txnid} already exists')
 
-                if not self.has_account(p.acc_qname):
+                if not self.is_valid_qname(p.acc_qname):
                     msg = f'Txn {p.txnid}: Account {p.acc_qname} does not exist or is ambiguous'
                     raise ValueError(msg)
 
@@ -201,7 +199,7 @@ class Journal():
             bassertions = [b.copy() for b in bassertions]
 
         for b in bassertions:
-            if not self.has_account(b.acc_qname):
+            if not self.is_valid_qname(b.acc_qname):
                 raise ValueError(f'Account {b.acc_qname} does not exist or is ambiguous')
 
             # Update to full qname
@@ -220,7 +218,7 @@ class Journal():
             targets = [t.copy() for t in targets]
 
         for t in targets:
-            if not self.has_account(t.acc_qname):
+            if not self.is_valid_qname(t.acc_qname):
                 raise ValueError(f'Account {t.acc_qname} does not exist or is ambiguous')
             if not self.is_leaf_account(t.acc_qname):
                 raise ValueError(f'Account {t.acc_qname} is not a leaf account')

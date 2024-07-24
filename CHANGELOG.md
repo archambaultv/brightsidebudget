@@ -6,9 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
+## [0.5.6]
+### Fixed
+- Fixed bug when `short_qname` would incorrectly truncate the qualified name of
+  an account.
+
+### Changed
+- `has_account` method of `Journal` is now `is_valid_qname`.
+
 ## [0.5.5]
 ### Fixed
-- Fixed bug when `short_qname_lenght` parameter of `write_txns` method of `Journal`
+- Fixed bug when `short_qname_length` parameter of `write_txns` method of `Journal`
   class was set to None.
 
 ## [0.5.4]

@@ -151,3 +151,27 @@ def test_short_qnames_2():
 
     with pytest.raises(ValueError):
         j.short_qname('Foo')
+
+    # A previous bug appeared only when there was an uneven number of the same
+    # account basenames.
+    j.add_accounts([Account(qname='Assets:House'),
+                    Account(qname='Assets:House:Foo')])
+
+    assert j.short_qname('Assets:Checking:Foo').qstr == 'Checking:Foo'
+    assert j.short_qname('Checking:Foo').qstr == 'Checking:Foo'
+    assert j.short_qname('Assets:Savings:Foo').qstr == 'Savings:Foo'
+    assert j.short_qname('Savings:Foo').qstr == 'Savings:Foo'
+    assert j.short_qname('Assets:House:Foo').qstr == 'House:Foo'
+    assert j.short_qname('House:Foo').qstr == 'House:Foo'
+
+    with pytest.raises(ValueError):
+        j.short_qname('Foo')
+
+    # Now Checking:Foo hides Assets:Checking:Foo
+    j.add_accounts([Account(qname='Checking'),
+                    Account(qname='Checking:Foo')])
+
+    assert j.short_qname('Assets:Checking:Foo').qstr == 'Assets:Checking:Foo'
+    assert j.short_qname('Checking:Foo').qstr == 'Checking:Foo'
+    assert j.full_qname('Checking:Foo').qstr == 'Checking:Foo'
+    assert j.account('Checking:Foo').qname.qstr == 'Checking:Foo'

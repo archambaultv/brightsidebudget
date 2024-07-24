@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
+## [0.5.4]
+### Fixed
+- `Account` class `copy` method now correctly copies the `short_qname` attribute.
+
 ## [0.5.3]
 ### Fixed
 - Fixed importation of empty strings as tags in `from_csv` method of `Journal`

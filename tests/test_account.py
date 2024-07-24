@@ -40,6 +40,10 @@ def test_account():
     assert acc.qname == QName("A:B:C")
     assert acc.short_qname == QName("C")
 
+    acc2 = acc.copy()
+    assert acc2.qname == QName("A:B:C")
+    assert acc2.short_qname == QName("C")
+
     # Change name
     acc.update_qname("D:E:F")
     assert acc.qname == QName("D:E:F")
@@ -48,6 +52,10 @@ def test_account():
     acc.update_qname("D:E:F", short_qname="E:F")
     assert acc.qname == QName("D:E:F")
     assert acc.short_qname == QName("E:F")
+
+    acc2 = acc.copy()
+    assert acc2.qname == QName("D:E:F")
+    assert acc2.short_qname == QName("E:F")
 
     acc.update_short_qname("D:E:F")
     assert acc.qname == QName("D:E:F")

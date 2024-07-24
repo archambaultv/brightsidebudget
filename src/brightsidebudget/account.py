@@ -151,7 +151,7 @@ class Account():
         return self._tags
 
     def copy(self) -> 'Account':
-        return Account(qname=self._qname, tags=self._tags.copy())
+        return Account(qname=self._qname, tags=self._tags.copy(), short_qname=self._short_qname)
 
     def tag(self, key: str) -> Union[str, None]:
         return self._tags.get(key, None)

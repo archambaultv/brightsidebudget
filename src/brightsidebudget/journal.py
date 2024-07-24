@@ -300,6 +300,9 @@ class Journal():
                 d = row.copy()
                 for x in ['Account', 'Account short name']:
                     d.pop(x, None)
+                for k, v in list(d.items()):
+                    if v is None or v.strip() == '':
+                        d.pop(k)
                 accs.append(Account(qname=qname, tags=d, short_qname=short_qname))
         j.add_accounts(accs)
 
@@ -321,6 +324,9 @@ class Journal():
                     for x in ['Txn', 'Date', 'Account', 'Amount', 'Comment',
                               'Stmt description', 'Stmt date']:
                         d.pop(x, None)
+                    for k, v in list(d.items()):
+                        if v is None or v.strip() == '':
+                            d.pop(k)
                     p = Posting(txnid=txn_id, date=dt, acc_qname=acc, amount=amnt,
                                 stmt_desc=stmt_desc, stmt_date=stmt_date, comment=comment,
                                 tags=d)
@@ -362,6 +368,9 @@ class Journal():
                     for x in ['Start date', 'Account', 'Amount', 'Comment', 'Frequency',
                               'Interval', 'Count', 'Until']:
                         d.pop(x, None)
+                    for k, v in list(d.items()):
+                        if v is None or v.strip() == '':
+                            d.pop(k)
                     ts.append(RPosting(start=start, acc_qname=acc, amount=amount,
                                        comment=comment, frequency=frequency, interval=interval,
                                        count=count, until=until, tags=d))
@@ -536,20 +545,22 @@ class Journal():
         """
         if ps is None:
             ps = self.postings
-        ps_keys = self.all_postings_tags(ps)
+        known_keys = set(self.all_postings_tags(ps))
         accs_keys = self.all_accounts_tags()
-        key_map = {k: k for k in ps_keys}
+        accs_keys_map = {}
         for k in accs_keys:
-            my_key = k
-            if my_key in key_map:
-                my_key += '_acc'
-                if my_key in key_map:
-                    my_key += '2'
-                    i = 3
-                    while my_key in key_map:
-                        my_key[:-1] += str(i)
+            new_key = k
+            if new_key in known_keys:
+                new_key += '_acc'
+                if new_key in known_keys:
+                    i = 2
+                    new_key2 = new_key + str(i)
+                    while new_key2 in known_keys:
                         i += 1
-            key_map[k] = my_key
+                        new_key2 = new_key + str(i)
+                    new_key = new_key2
+            known_keys.add(new_key)
+            accs_keys_map[k] = new_key
 
         max_depth = max((a.qname.depth for a in self.accounts), default=0)
 
@@ -570,7 +581,7 @@ class Journal():
                 d[f'Account {i + 1}'] = group
             acc = self.account(p.acc_qname)
             for k in accs_keys:
-                d[key_map[k]] = acc.tag(k)
+                d[accs_keys_map[k]] = acc.tag(k)
             data.append(d)
         # Define schema
         schema = {
@@ -585,7 +596,7 @@ class Journal():
         }
         for i in range(1, max_depth + 1):
             schema[f'Account {i}'] = pl.Utf8
-        for k in key_map.values():
+        for k in known_keys:
             schema[k] = pl.Utf8
         return pl.DataFrame(data, schema=schema)
 

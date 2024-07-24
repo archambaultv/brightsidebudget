@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
+## [0.5.3]
+### Fixed
+- Fixed importation of empty strings as tags in `from_csv` method of `Journal`
+  class. Empty strings are now ignored.
+- Fixed conflicting tag resolution in `to_polars` method of `Journal` class.
+
 ## [0.5.2]
 ### Added
 - Add `add_relative_month_column`, `sort_by`, and `side_by_side` function to `report` module.

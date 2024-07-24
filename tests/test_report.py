@@ -55,6 +55,67 @@ def test_add_month_column():
     assert result.equals(expected)
 
 
+def test_side_by_side():
+    df1 = pl.DataFrame({
+        "Date": [
+            "2024-01-01",
+            "2021-02-01",
+            "2023-03-01"
+        ]}, schema={"Date": pl.Date})
+    df2 = pl.DataFrame({
+        "Account": [
+            "Checking",
+            "Saving",
+            "Credit card",
+            "Food"
+        ]}, schema={"Account": pl.Utf8})
+
+    result = r.side_by_side(df1, df2, separator="~")
+    df1_lines = []
+    df2_lines = []
+    for line in result.split("\n"):
+        s = line.split("~")
+        if s[0].strip():
+            df1_lines.append(s[0])
+        if s[1].strip():
+            df2_lines.append(s[1])
+    assert '\n'.join(df1_lines) == str(df1)
+    assert '\n'.join(df2_lines) == str(df2)
+
+
+def test_sort_by():
+    df = pl.DataFrame({
+        "Account": [
+            "Assets",
+            "Expenses",
+            "Revenue",
+            "Other",
+            "Liabilities"
+        ]
+    }, schema={"Account": pl.Utf8})
+    expected = pl.DataFrame({
+        "Account": [
+            "Assets",
+            "Liabilities",
+            "Revenue",
+            "Expenses",
+            "Other"
+        ]
+    }, schema={"Account": pl.Utf8})
+    mapping = {
+        "Assets": 1,
+        "Liabilities": 2,
+        "Revenue": 3,
+        "Expenses": 4
+    }
+    result = r.sort_by(df, by="Account", order_mapping=mapping)
+    assert result.equals(expected)
+
+    result = r.sort_by(df, by="Account", order_mapping=mapping,
+                       descending=True)
+    assert result.equals(expected.reverse())
+
+
 def test_add_year_month_column():
     df = pl.DataFrame({
         "Date": [

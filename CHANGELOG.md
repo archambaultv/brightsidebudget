@@ -8,7 +8,7 @@ the exception that the versions 0.*.* may have breaking changes in minor version
 
 ## [0.5.2]
 ### Fixed
-- Add `add_relative_month_column` function to `report` module.
+- Add `add_relative_month_column`, `sort_by`, and `side_by_side` function to `report` module.
 
 ## [0.5.1]
 ### Fixed

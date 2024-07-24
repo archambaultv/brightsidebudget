@@ -4,7 +4,7 @@ dataframes.
 """
 
 from datetime import date
-from typing import Literal, Union
+from typing import Any, Literal, Union
 import polars as pl
 
 
@@ -91,6 +91,55 @@ def add_relative_month_column(df: pl.DataFrame,
         .cast(pl.Int32)
         .alias(col_name)
         )
+
+
+def side_by_side(df1: pl.DataFrame,
+                 df2: pl.DataFrame,
+                 separator: str = "    ") -> str:
+    """
+    Return a string with the two dataframes side by side.
+    """
+    df1_str = str(df1)
+    df2_str = str(df2)
+    df1_lines = df1_str.split("\n")
+    df2_lines = df2_str.split("\n")
+    max_len = max(len(df1_lines), len(df2_lines))
+    lines = []
+    for i in range(max_len):
+        if i < len(df1_lines):
+            line = df1_lines[i]
+        else:
+            line = " " * len(df1_lines[0])
+        if i < len(df2_lines):
+            line += separator
+            line += df2_lines[i]
+        lines.append(line)
+
+    return "\n".join(lines)
+
+
+def sort_by(df: pl.DataFrame, by: str,
+            order_mapping: dict[Any, int],
+            maintain_order: bool = False,
+            descending: bool = False) -> pl.DataFrame:
+    """
+    Sort the dataframe by a column based on a mapping of values to order.
+    Elements not in the mapping will be sorted last.
+    """
+    # Create a sort key column
+    sort_col = "sort_key"
+    while sort_col in df.columns:
+        sort_col += "_"
+
+    max_ = max(order_mapping.values()) + 1
+    df = (df.with_columns(
+                pl.col(by)
+                .map_elements(lambda x: order_mapping.get(x, max_), pl.Int32)
+                .alias(sort_col))
+            .sort(sort_col, descending=descending, maintain_order=maintain_order)
+            .drop("sort_key"))
+
+    return df
 
 
 def balance_report(df: pl.DataFrame,

@@ -7,7 +7,7 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) wit
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
 ## [0.5.2]
-### Fixed
+### Added
 - Add `add_relative_month_column`, `sort_by`, and `side_by_side` function to `report` module.
 
 ## [0.5.1]

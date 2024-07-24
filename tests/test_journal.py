@@ -10,6 +10,10 @@ def test_from_csv(accounts_file, txns_file, bassertions_file, budget_file):
     assert len(j.postings) == 8
     assert len(j.bassertions) == 6
     assert len(j.targets) == 4
+    a = j.account('Assets:Checking')
+    assert "Tag 1" not in a.tags
+    a2 = j.account('Assets')
+    assert "Tag 1" in a2.tags
 
 
 def test_check_balances(accounts_file, txns_file, bassertions_file):
@@ -107,7 +111,7 @@ def test_to_polars(accounts_file, txns_file):
     assert len(df) == 8
     expected_cols = ['Txn', 'Date', 'Account',  'Account short name',
                      'Account 1', 'Account 2', 'Account 3', 'Amount', 'Comment',
-                     'Stmt date', 'Stmt description', 'Number']
+                     'Stmt date', 'Stmt description', 'Number', 'Tag 1']
     assert len(df.columns) == len(expected_cols)
     for x in expected_cols:
         assert x in df.columns

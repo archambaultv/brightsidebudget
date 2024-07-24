@@ -300,6 +300,9 @@ class Journal():
                 d = row.copy()
                 for x in ['Account', 'Account short name']:
                     d.pop(x, None)
+                for k, v in list(d.items()):
+                    if v is None or v.strip() == '':
+                        d.pop(k)
                 accs.append(Account(qname=qname, tags=d, short_qname=short_qname))
         j.add_accounts(accs)
 
@@ -321,6 +324,9 @@ class Journal():
                     for x in ['Txn', 'Date', 'Account', 'Amount', 'Comment',
                               'Stmt description', 'Stmt date']:
                         d.pop(x, None)
+                    for k, v in list(d.items()):
+                        if v is None or v.strip() == '':
+                            d.pop(k)
                     p = Posting(txnid=txn_id, date=dt, acc_qname=acc, amount=amnt,
                                 stmt_desc=stmt_desc, stmt_date=stmt_date, comment=comment,
                                 tags=d)
@@ -362,6 +368,9 @@ class Journal():
                     for x in ['Start date', 'Account', 'Amount', 'Comment', 'Frequency',
                               'Interval', 'Count', 'Until']:
                         d.pop(x, None)
+                    for k, v in list(d.items()):
+                        if v is None or v.strip() == '':
+                            d.pop(k)
                     ts.append(RPosting(start=start, acc_qname=acc, amount=amount,
                                        comment=comment, frequency=frequency, interval=interval,
                                        count=count, until=until, tags=d))

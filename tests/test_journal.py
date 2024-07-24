@@ -115,3 +115,17 @@ def test_to_polars(accounts_file, txns_file):
     assert len(df.columns) == len(expected_cols)
     for x in expected_cols:
         assert x in df.columns
+
+
+def test_conflicting_tags(accounts_file, txns_file):
+    j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
+    ps = []
+    for p in j.postings:
+        p.tags['Tag 1'] = 'Conflict'
+        p.tags['Tag 1_acc'] = 'Conflict again'
+        ps.append(p)
+    df = j.to_polars(ps)
+
+    assert df['Tag 1'].unique().to_list() == ['Conflict']
+    assert df['Tag 1_acc'].unique().to_list() == ['Conflict again']
+    assert "Tag 1_acc2" in df.columns

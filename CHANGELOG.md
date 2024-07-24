@@ -10,6 +10,7 @@ the exception that the versions 0.*.* may have breaking changes in minor version
 ### Fixed
 - Fixed importation of empty strings as tags in `from_csv` method of `Journal`
   class. Empty strings are now ignored.
+- Fixed conflicting tag resolution in `to_polars` method of `Journal` class.
 
 ## [0.5.2]
 ### Added

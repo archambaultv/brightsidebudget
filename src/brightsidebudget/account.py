@@ -34,7 +34,7 @@ class QName():
     @property
     def qlist(self) -> list[str]:
         """
-        The qualified name as a list of name.
+        The qualified name as a list of name. The list is a new copy.
         """
         return self._qlist.copy()
 
@@ -48,7 +48,7 @@ class QName():
     @property
     def depth(self) -> int:
         """
-        The depth of the qualified name.
+        The depth of the qualified name. Equals to the number of elements in the QName.
         """
         return len(self._qlist)
 
@@ -97,20 +97,14 @@ class QName():
 
 class Account():
     """
-    An Account represents a single financial entity where transactions occur.
-    It is basically a QName with optional tags and information.
-
-    short_qname is the shortest version of the qname that can be used in reports.
-    For example, if the qname is "Assets:Savings:Capital gain" and the short_qname
-    is "Savings:Capital gain", then the account will never be printed as "Capital gain"
-    in reports even if this name is unambiguous.
+    An Account represents a single financial entity where transactions occur. It
+    is basically a QName with optional tags.
     """
     def __init__(self, *, qname: Union[QName, str],
-                 short_qname: Union[QName, str, None] = None,
                  tags: Union[dict[str, str], None] = None):
-        self._qname = None
-        self._short_qname = None
-        self.update_qname(qname, short_qname)
+        if isinstance(qname, str):
+            qname = QName(qname)
+        self._qname = qname
         self._tags = tags or {}
 
     @property
@@ -120,31 +114,11 @@ class Account():
         """
         return self._qname
 
-    @property
-    def short_qname(self) -> QName:
-        """
-        The shortest qualified name of the account to be used in reports.
-        """
-        return self._short_qname
-
-    def update_qname(self, qname: Union[QName, str],
-                     short_qname: Union[QName, str, None] = None):
-        self._qname = qname if isinstance(qname, QName) else QName(qname)
-        if short_qname is None:
-            self._short_qname = QName(self._qname.qlist[-1])
-        elif isinstance(short_qname, str):
-            self._short_qname = QName(short_qname)
-        else:
-            self._short_qname = short_qname
-
-        s = self._short_qname
-        if s.depth > self._qname.depth:
-            raise ValueError("Short qname must be shorter or equal to the qname.")
-        if self._qname.qlist[-s.depth:] != s.qlist:
-            raise ValueError("Short qname must be a suffix of the qname.")
-
-    def update_short_qname(self, short_qname: Union[QName, str]):
-        self.update_qname(self._qname, short_qname)
+    @qname.setter
+    def qname(self, value: Union[QName, str]):
+        if isinstance(value, str):
+            value = QName(value)
+        self._qname = value
 
     @property
     def tags(self) -> dict[str, str]:

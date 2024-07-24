@@ -1,6 +1,9 @@
 from datetime import date
 from decimal import Decimal
+
+import pytest
 from brightsidebudget import Journal, BAssertion
+from brightsidebudget.account import Account
 
 
 def test_from_csv(accounts_file, txns_file, bassertions_file, budget_file):
@@ -73,14 +76,17 @@ def test_adjust_for_bassertion_child(accounts_file, txns_file):
     assert len(j.postings) == 10
 
 
-def test_short_qname(accounts_file, txns_file):
+def test_short_qnames_1(accounts_file, txns_file):
     j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
     assert j.short_qname('Assets:Checking').qstr == 'Checking'
     assert j.short_qname('Checking').qstr == 'Checking'
     assert j.short_qname('Assets').qstr == 'Assets'
-    assert j.short_qname('Other').qstr == 'Expenses:Other'  # Restricted by accounts file
-    assert j.short_qname('Expenses:Other').qstr == 'Expenses:Other'
+    assert j.short_qname('Expenses:Other').qstr == 'Other'
     assert j.short_qname('Expenses:Food').qstr == 'Food'
+
+    assert j.short_qname('Assets:Checking', min_length=2).qstr == 'Assets:Checking'
+    assert j.short_qname('Checking', min_length=2).qstr == 'Assets:Checking'
+    assert j.short_qname('Assets', min_length=2).qstr == 'Assets'
 
 
 def test_empty_journal():
@@ -129,3 +135,19 @@ def test_conflicting_tags(accounts_file, txns_file):
     assert df['Tag 1'].unique().to_list() == ['Conflict']
     assert df['Tag 1_acc'].unique().to_list() == ['Conflict again']
     assert "Tag 1_acc2" in df.columns
+
+
+def test_short_qnames_2():
+    j = Journal()
+    j.add_accounts([Account(qname='Assets'),
+                    Account(qname='Assets:Checking'),
+                    Account(qname='Assets:Checking:Foo'),
+                    Account(qname='Assets:Savings'),
+                    Account(qname='Assets:Savings:Foo')])
+    assert j.short_qname('Assets:Checking:Foo').qstr == 'Checking:Foo'
+    assert j.short_qname('Checking:Foo').qstr == 'Checking:Foo'
+    assert j.short_qname('Assets:Savings:Foo').qstr == 'Savings:Foo'
+    assert j.short_qname('Savings:Foo').qstr == 'Savings:Foo'
+
+    with pytest.raises(ValueError):
+        j.short_qname('Foo')

@@ -38,22 +38,10 @@ def test_qname():
 def test_account():
     acc = Account(qname="A:B:C")
     assert acc.qname == QName("A:B:C")
-    assert acc.short_qname == QName("C")
+
+    acc2 = acc.copy()
+    assert acc2.qname == QName("A:B:C")
 
     # Change name
-    acc.update_qname("D:E:F")
+    acc.qname = "D:E:F"
     assert acc.qname == QName("D:E:F")
-    assert acc.short_qname == QName("F")
-
-    acc.update_qname("D:E:F", short_qname="E:F")
-    assert acc.qname == QName("D:E:F")
-    assert acc.short_qname == QName("E:F")
-
-    acc.update_short_qname("D:E:F")
-    assert acc.qname == QName("D:E:F")
-    assert acc.short_qname == QName("D:E:F")
-
-    with pytest.raises(ValueError):
-        Account(qname="A:B:C", short_qname="X:C")
-    with pytest.raises(ValueError):
-        Account(qname="A:B:C", short_qname="A:B")

@@ -7,8 +7,10 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) wit
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
 ## [0.5.4]
-### Fixed
-- `Account` class `copy` method now correctly copies the `short_qname` attribute.
+### Removed
+- Removed `Account` class `short_qname` attribute. The `to_polars` and
+  `write_txns` methods of `Journal` class now uses a `short_qname_lenght`
+  parameter to limit the shortest qualified name of an account.
 
 ## [0.5.3]
 ### Fixed

@@ -70,27 +70,24 @@ class Journal():
         else:
             return qname in self.short_qname_dict
 
-    def short_qname(self, qname: Union[QName, str]) -> QName:
+    def short_qname(self, qname: Union[QName, str],
+                    min_length: int = 1) -> QName:
         """
-        Returns the shortest qualified name that uniquely identifies the account and
-        respects the short_qname attribute of the account.
+        Returns the shortest qualified name that uniquely identifies the
+        account. The qname must be a valid qualified name.
+        """
+        if min_length < 1:
+            raise ValueError('min_length must be greater than 0')
 
-        The qname must be a valid qualified name.
-        """
-        acc = self.account(qname)
-        ls = acc.qname.qlist
         # We try all possible short names starting from shortest to longest
-        for i in range(len(ls) - 1, -1, -1):
-            short_name = QName(ls[i:])
-            if short_name not in self.short_qname_dict:
-                continue
-            # If the short name matched, then we know it is this account
-            # because ambiguous short names are not allowed
-            if short_name.depth < acc.short_qname.depth:
-                # The short name is shorter than the account's short name
-                # We respect the account's short name
-                return acc.short_qname
-            return short_name
+        # We know the full qname is unique, so we will find a match
+        acc = self.account(qname)
+        qlist = acc.qname._qlist
+        min_length = min(min_length, len(qlist))
+        for i in range(min_length, len(qlist) + 1):
+            short_name = QName(qlist[-i:])
+            if short_name in self.short_qname_dict:
+                return short_name
 
     def full_qname(self, qname: Union[QName, str]) -> QName:
         """
@@ -128,12 +125,17 @@ class Journal():
                 raise ValueError(f'Parent account {parent} does not exist or is ambiguous')
 
             self.full_qname_set.add(a.qname)
-            # Update qname_dict. This dict also contains shorted names
             self.accounts.append(a)
+
+            # Now we need to update the short_qname_dict.
+            # We know the full qname is unique, so let's add it
             self.short_qname_dict[a.qname] = a
-            ls = a.qname._qlist
-            for idx in range(1, len(ls)):
-                short_name = QName(ls[idx:])
+
+            # But the short qname may not be unique. We go from the shortest
+            # qname to just before the full qname, removing any ambiguity.
+            qlist = a.qname.qlist
+            for idx in range(1, len(qlist)):
+                short_name = QName(qlist[-idx:])
                 if short_name in self.full_qname_set:
                     # Cannot overwrite a full qname
                     continue
@@ -166,7 +168,7 @@ class Journal():
                 elif p.txnid in self.txns_dict:
                     raise ValueError(f'Transaction {p.txnid} already exists')
 
-                if p.acc_qname not in self.short_qname_dict:
+                if not self.has_account(p.acc_qname):
                     msg = f'Txn {p.txnid}: Account {p.acc_qname} does not exist or is ambiguous'
                     raise ValueError(msg)
 
@@ -199,7 +201,7 @@ class Journal():
             bassertions = [b.copy() for b in bassertions]
 
         for b in bassertions:
-            if b.acc_qname not in self.short_qname_dict:
+            if not self.has_account(b.acc_qname):
                 raise ValueError(f'Account {b.acc_qname} does not exist or is ambiguous')
 
             # Update to full qname
@@ -218,7 +220,7 @@ class Journal():
             targets = [t.copy() for t in targets]
 
         for t in targets:
-            if t.acc_qname not in self.short_qname_dict:
+            if not self.has_account(t.acc_qname):
                 raise ValueError(f'Account {t.acc_qname} does not exist or is ambiguous')
             if not self.is_leaf_account(t.acc_qname):
                 raise ValueError(f'Account {t.acc_qname} is not a leaf account')
@@ -293,17 +295,13 @@ class Journal():
             reader = csv.DictReader(f)
             for row in reader:
                 qname = row['Account']
-                if 'Account short name' in row:
-                    short_qname = empty_is_none(row['Account short name'])
-                else:
-                    short_qname = None
                 d = row.copy()
-                for x in ['Account', 'Account short name']:
+                for x in ['Account']:
                     d.pop(x, None)
                 for k, v in list(d.items()):
                     if v is None or v.strip() == '':
                         d.pop(k)
-                accs.append(Account(qname=qname, tags=d, short_qname=short_qname))
+                accs.append(Account(qname=qname, tags=d))
         j.add_accounts(accs)
 
         ps: list[Posting] = []
@@ -522,13 +520,16 @@ class Journal():
             accs = self.accounts
         return list({k for a in accs for k in a.tags.keys()})
 
-    def to_polars(self, ps: Union[list[Posting], None] = None) -> pl.DataFrame:
+    def to_polars(self,
+                  ps: Union[list[Posting], None] = None,
+                  short_qname_length: Union[dict[QName, int], None] = None) -> pl.DataFrame:
         """
         Returns a polars DataFrame with the postings, including all tags from
         both the postings and the accounts. In the case of a tag name conflict,
         the account tag is suffix with '_acc'.
 
         If `ps` is None, the function uses all the postings in the journal.
+        short_qname_lenght: A dictionary that maps a QName to the minimum length
 
         The columns are:
             - Txn: Transaction ID
@@ -543,6 +544,8 @@ class Journal():
             - All tags from the postings
             - All tags from the accounts
         """
+        if short_qname_length is None:
+            short_qname_length = {}
         if ps is None:
             ps = self.postings
         known_keys = set(self.all_postings_tags(ps))
@@ -566,11 +569,15 @@ class Journal():
 
         data = []
         for p in ps:
+            if p.acc_qname in short_qname_length:
+                short_qname = self.short_qname(p.acc_qname, short_qname_length[p.acc_qname])
+            else:
+                short_qname = self.short_qname(p.acc_qname)
             d = {
                 'Txn': p.txnid,
                 'Date': p.date,
                 'Account': p.acc_qname.qstr,
-                'Account short name': self.short_qname(p.acc_qname).qstr,
+                'Account short name': short_qname.qstr,
                 'Amount': float(p.amount),
                 'Comment': p.comment,
                 'Stmt date': p.stmt_date,
@@ -603,7 +610,8 @@ class Journal():
     def write_txns(self, *,
                    txns: Union[list[Txn], None] = None,
                    filefunc: Union[str, Callable[[Txn], str]] = "txns.csv",
-                   use_short_qname: bool = True,
+                   use_short_qname: bool = False,
+                   short_qname_length: Union[dict[QName, int], None] = None,
                    renumber: bool = False,
                    encoding="utf8"):
         """
@@ -650,7 +658,11 @@ class Journal():
                         txnid = p.txnid
                     row = [txnid, p.date]
                     if use_short_qname:
-                        row.append(self.short_qname(p.acc_qname))
+                        if p.acc_qname in short_qname_length:
+                            short = self.short_qname(p.acc_qname, short_qname_length[p.acc_qname])
+                        else:
+                            short = self.short_qname(p.acc_qname)
+                        row.append(short)
                     else:
                         row.append(p.acc_qname)
                     row += [p.amount, p.stmt_date, p.comment, p.stmt_desc]

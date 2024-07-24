@@ -617,6 +617,8 @@ class Journal():
         """
         Write the postings to a one or more CSV files.
         """
+        if short_qname_length is None:
+            short_qname_length = {}
         if txns is None:
             txns = self.txns_dict.values()
 

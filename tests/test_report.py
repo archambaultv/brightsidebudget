@@ -132,6 +132,32 @@ def test_add_fiscal_month_column():
     assert result.equals(expected)
 
 
+def test_relative_month_column():
+    df = pl.DataFrame({
+        "Date": [
+            "2023-12-31",
+            "2024-01-01",
+            "2024-02-01",
+            "2024-03-01",
+            "2024-04-01",
+            "2024-05-01",
+        ]}, schema={"Date": pl.Date})
+    expected = pl.DataFrame({
+        "Date": [
+            "2023-12-31",
+            "2024-01-01",
+            "2024-02-01",
+            "2024-03-01",
+            "2024-04-01",
+            "2024-05-01",
+        ],
+        "Relative Month": [-2, -1, 0, 1, 2, 3]
+    }, schema={"Date": pl.Date, "Relative Month": pl.Int32})
+    today = date(2024, 2, 1)
+    result = r.add_relative_month_column(df, today=today)
+    assert result.equals(expected)
+
+
 def report_df(with_budget: bool = False) -> pl.DataFrame:
     data = []
     for idx in range(24):

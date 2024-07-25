@@ -41,6 +41,10 @@ def test_txn():
         Txn([p1, p2])
     p2.txnid = 1
 
+    p2.date = date(2021, 1, 2)
+    with pytest.raises(ValueError):
+        Txn([p1, p2])
+
 
 def test_rposting():
     r1 = RPosting(start=date(2021, 1, 1), acc_qname="A:B:C", amount=Decimal("100.00"))

@@ -64,6 +64,8 @@ class Txn():
             raise ValueError(f'Txn postings must have a unique txnid. Got {set_txnid}')
         if len(self.postings) < 2:
             raise ValueError(f'Txn {self.txnid} must have at least two Posting')
+        if len(set(p.date for p in self.postings)) != 1:
+            raise ValueError(f'Txn {self.txnid} must have the same date')
         s = sum([p.amount for p in self.postings])
         if s != 0:
             raise ValueError(f'Txn {self.txnid} balance is not zero: {s}')

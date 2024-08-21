@@ -1,6 +1,5 @@
 """
-This module contains helper functions to generate reports and manipulate
-dataframes.
+This module contains helper functions to manipulate dataframes.
 """
 
 from datetime import date

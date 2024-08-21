@@ -91,3 +91,14 @@ def add_relative_month_column(df: pl.DataFrame,
         .cast(pl.Int32)
         .alias(col_name)
         )
+
+
+def add_txn_accounts_colum(df: pl.DataFrame,
+                           col_name: str = "Txn Accounts") -> pl.DataFrame:
+    """
+    Add a column with the accounts involved in the transaction.
+    """
+    grouped_df = df.group_by("Txn").agg(
+        pl.col('Account short name').unique().sort().str.concat(delimiter=" | ").alias(col_name)
+    )
+    return df.join(grouped_df, on="Txn", how="left")

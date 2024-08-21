@@ -24,6 +24,8 @@ def verify_from_csv(j: Journal):
     assert len(j.txns_dict) == 2
     txn2 = j.txns_dict[2]
     assert txn2.postings[0].stmt_desc == 'Super market'
+    for a in j.accounts:
+        assert len(a.tags) in [1, 2]
 
 
 def test_from_csv_i18n(accounts_file, txns_file, bassertions_file, budget_file,

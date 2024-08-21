@@ -1,6 +1,7 @@
 from datetime import date
 import polars as pl
 from brightsidebudget import Journal
+from brightsidebudget.i18n import DataframeHeader
 import brightsidebudget.report as r
 
 
@@ -184,3 +185,23 @@ def test_write_excel(accounts_file, txns_file, tmp_path):
     df = j.to_polars()
     tmp_file = tmp_path / "test.xlsx"
     df.write_excel(tmp_file)
+
+
+def test_to_polars_i18n(accounts_file, txns_file):
+    j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
+    df = j.to_polars()
+    assert sorted(df.columns) == sorted(["Txn", "Date", "Account", "Amount", "Comment",
+                                         "Stmt description", "Account 1", "Account 2", "Account 3",
+                                         "Account short name", "Number", "Tag 1",
+                                         "Stmt date"])
+
+    dfheader = DataframeHeader(txn="Txn2", date="Date2", account="Account2",
+                               amount="Amount2", comment="Comment2",
+                               account_short="Account short name2",
+                               stmt_desc="Stmt description2", stmt_date="Stmt date2")
+    df = j.to_polars(df_header=dfheader)
+    assert sorted(df.columns) == sorted(["Txn2", "Date2", "Account2", "Amount2", "Comment2",
+                                         "Stmt description2", "Stmt date2", "Account2 1",
+                                         "Account2 2",
+                                         "Account2 3", "Account short name2", "Number",
+                                         "Tag 1"])

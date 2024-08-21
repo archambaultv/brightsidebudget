@@ -3,7 +3,7 @@ class AccountHeader():
         self.account = account
 
     def __iter__(self):
-        return iter(self.account)
+        return iter([self.account])
 
 
 class TxnHeader():
@@ -50,3 +50,23 @@ class TargetHeader():
     def __iter__(self):
         return iter([self.start_date, self.account, self.amount, self.comment, self.frequency,
                      self.interval, self.count, self.until])
+
+
+class DataframeHeader():
+    def __init__(self, *, txn: str = "Txn", date: str = "Date", account: str = "Account",
+                 account_short: str = "Account short name", amount: str = "Amount",
+                 comment: str = "Comment", stmt_date: str = "Stmt date",
+                 stmt_desc: str = "Stmt description"):
+        self.txn = txn
+        self.date = date
+        self.account = account
+        self.account_short = account_short
+        self.amount = amount
+        self.comment = comment
+        self.stmt_date = stmt_date
+        self.stmt_desc = stmt_desc
+
+    def __iter__(self):
+        return iter([self.txn, self.date, self.account, self.account_short, self.amount,
+                     self.comment,
+                     self.stmt_date, self.stmt_desc])

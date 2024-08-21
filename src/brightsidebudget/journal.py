@@ -6,7 +6,8 @@ from decimal import Decimal
 from typing import Callable, Union
 from brightsidebudget.account import Account, QName
 from brightsidebudget.bassertion import BAssertion
-from brightsidebudget.i18n import AccountHeader, BAssertionHeader, TargetHeader, TxnHeader
+from brightsidebudget.i18n import AccountHeader, BAssertionHeader, DataframeHeader, \
+    TargetHeader, TxnHeader
 from brightsidebudget.posting import Posting, RPosting, Txn, txn_from_postings
 
 
@@ -539,6 +540,8 @@ class Journal():
 
     def to_polars(self,
                   ps: Union[list[Posting], None] = None,
+                  *,
+                  df_header: Union[DataframeHeader, None] = None,
                   short_qname_length: Union[dict[QName, int], None] = None) -> pl.DataFrame:
         """
         Returns a polars DataFrame with the postings, including all tags from
@@ -548,7 +551,7 @@ class Journal():
         If `ps` is None, the function uses all the postings in the journal.
         short_qname_lenght: A dictionary that maps a QName to the minimum length
 
-        The columns are:
+        The default columns are:
             - Txn: Transaction ID
             - Date: Posting date
             - Account: Account full qualified name
@@ -563,6 +566,8 @@ class Journal():
         """
         if short_qname_length is None:
             short_qname_length = {}
+        if df_header is None:
+            df_header = DataframeHeader()
         if ps is None:
             ps = self.postings
         known_keys = set(self.all_postings_tags(ps))
@@ -591,35 +596,35 @@ class Journal():
             else:
                 short_qname = self.short_qname(p.acc_qname)
             d = {
-                'Txn': p.txnid,
-                'Date': p.date,
-                'Account': p.acc_qname.qstr,
-                'Account short name': short_qname.qstr,
-                'Amount': float(p.amount),
-                'Comment': p.comment,
-                'Stmt date': p.stmt_date,
-                'Stmt description': p.stmt_desc,
+                df_header.txn: p.txnid,
+                df_header.date: p.date,
+                df_header.account: p.acc_qname.qstr,
+                df_header.account_short: short_qname.qstr,
+                df_header.amount: float(p.amount),
+                df_header.comment: p.comment,
+                df_header.stmt_date: p.stmt_date,
+                df_header.stmt_desc: p.stmt_desc,
                 **p.tags
             }
             for i, group in enumerate(p.acc_qname.qlist):
-                d[f'Account {i + 1}'] = group
+                d[f'{df_header.account} {i + 1}'] = group
             acc = self.account(p.acc_qname)
             for k in accs_keys:
                 d[accs_keys_map[k]] = acc.tag(k)
             data.append(d)
         # Define schema
         schema = {
-            'Txn': pl.UInt32,
-            'Date': pl.Date,
-            'Account': pl.Utf8,
-            'Account short name': pl.Utf8,
-            'Amount': pl.Float64,
-            'Comment': pl.Utf8,
-            'Stmt date': pl.Date,
-            'Stmt description': pl.Utf8
+            df_header.txn: pl.UInt32,
+            df_header.date: pl.Date,
+            df_header.account: pl.Utf8,
+            df_header.account_short: pl.Utf8,
+            df_header.amount: pl.Float64,
+            df_header.comment: pl.Utf8,
+            df_header.stmt_date: pl.Date,
+            df_header.stmt_desc: pl.Utf8
         }
         for i in range(1, max_depth + 1):
-            schema[f'Account {i}'] = pl.Utf8
+            schema[f'{df_header.account} {i}'] = pl.Utf8
         for k in known_keys:
             schema[k] = pl.Utf8
         return pl.DataFrame(data, schema=schema)
@@ -632,7 +637,7 @@ class Journal():
                    renumber: bool = False,
                    encoding="utf8"):
         """
-        Write the postings to a one or more CSV files.
+        Write the postings to one or more CSV files.
         """
         if short_qname_length is None:
             short_qname_length = {}

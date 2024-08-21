@@ -175,3 +175,19 @@ def test_short_qnames_2():
     assert j.short_qname('Checking:Foo').qstr == 'Checking:Foo'
     assert j.full_qname('Checking:Foo').qstr == 'Checking:Foo'
     assert j.account('Checking:Foo').qname.qstr == 'Checking:Foo'
+
+
+def test_duplicate_balance():
+    j = Journal()
+    j.add_accounts([Account(qname='Assets')])
+    j.add_bassertions([BAssertion(date=date(2021, 1, 1), acc_qname='Assets', balance=Decimal(100))])
+    with pytest.raises(ValueError):
+        j.add_bassertions([BAssertion(date=date(2021, 1, 1), acc_qname='Assets',
+                                      balance=Decimal(100))])
+
+    j.add_accounts([Account(qname='Assets:Checking')])
+    j.add_bassertions([BAssertion(date=date(2021, 1, 1), acc_qname='Assets:Checking',
+                                  balance=Decimal(100))])
+    with pytest.raises(ValueError):
+        j.add_bassertions([BAssertion(date=date(2021, 1, 1), acc_qname='Checking',
+                                      balance=Decimal(100))])

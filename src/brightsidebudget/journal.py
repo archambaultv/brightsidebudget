@@ -22,6 +22,7 @@ class Journal():
         self.postings: list[Posting] = []
         self.targets: list[RPosting] = []
         self.bassertions: list[BAssertion] = []
+        self._bassertions_set: set[tuple[date, QName]] = set()
         self.txns_dict: dict[int, Txn] = {}
         # _full_qname_dict: A dictionary that maps a full qualified name to an
         # account
@@ -204,6 +205,11 @@ class Journal():
 
             # Update to full qname
             b.acc_qname = self.full_qname(b.acc_qname)
+
+            # Check for duplicates
+            if (b.date, b.acc_qname) in self._bassertions_set:
+                raise ValueError(f'BAssertion {b.date} {b.acc_qname} already exists')
+            self._bassertions_set.add((b.date, b.acc_qname))
 
         for b in bassertions:
             self.bassertions.append(b)

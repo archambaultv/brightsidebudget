@@ -1,10 +1,12 @@
 import csv
+from pathlib import PosixPath
 import polars as pl
 from datetime import date
 from decimal import Decimal
 from typing import Callable, Union
 from brightsidebudget.account import Account, QName
 from brightsidebudget.bassertion import BAssertion
+from brightsidebudget.i18n import AccountHeader, BAssertionHeader, TargetHeader, TxnHeader
 from brightsidebudget.posting import Posting, RPosting, Txn, txn_from_postings
 
 
@@ -283,12 +285,25 @@ class Journal():
     @classmethod
     def from_csv(cls, accounts: str, postings: Union[str, list[str]],
                  bassertions: Union[str, None] = None,
-                 targets: Union[str, None] = None, encoding: str = 'utf-8'):
+                 targets: Union[str, None] = None, *,
+                 encoding: str = 'utf-8',
+                 acc_header: Union[AccountHeader, None] = None,
+                 txn_header: Union[TxnHeader, None] = None,
+                 bassertion_header: Union[BAssertionHeader, None] = None,
+                 target_header: Union[TargetHeader, None] = None):
         """
         Loads a journal from CSV files.
         """
-        if isinstance(postings, str):
+        if isinstance(postings, (str, PosixPath)):
             postings = [postings]
+        if acc_header is None:
+            acc_header = AccountHeader()
+        if txn_header is None:
+            txn_header = TxnHeader()
+        if bassertion_header is None:
+            bassertion_header = BAssertionHeader()
+        if target_header is None:
+            target_header = TargetHeader()
 
         def empty_is_none(x: Union[str, None]) -> Union[str, None]:
             return None if x == '' else x
@@ -298,9 +313,9 @@ class Journal():
         with open(accounts, 'r', encoding=encoding) as f:
             reader = csv.DictReader(f)
             for row in reader:
-                qname = row['Account']
+                qname = row[acc_header.account]
                 d = row.copy()
-                for x in ['Account']:
+                for x in acc_header:
                     d.pop(x, None)
                 for k, v in list(d.items()):
                     if v is None or v.strip() == '':
@@ -313,18 +328,17 @@ class Journal():
             with open(p_file, 'r', encoding=encoding) as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    txn_id = int(row['Txn'])
-                    dt = date.fromisoformat(row['Date'])
-                    acc = row['Account']
-                    amnt = Decimal(row['Amount'])
-                    comment = empty_is_none(row.get('Comment'))
-                    stmt_desc = empty_is_none(row.get('Stmt description'))
-                    stmt_date = empty_is_none(row.get('Stmt date'))
+                    txn_id = int(row[txn_header.txn])
+                    dt = date.fromisoformat(row[txn_header.date])
+                    acc = row[txn_header.account]
+                    amnt = Decimal(row[txn_header.amount])
+                    comment = empty_is_none(row.get(txn_header.comment))
+                    stmt_desc = empty_is_none(row.get(txn_header.stmt_desc))
+                    stmt_date = empty_is_none(row.get(txn_header.stmt_date))
                     if stmt_date:
                         stmt_date = date.fromisoformat(stmt_date)
                     d = row.copy()
-                    for x in ['Txn', 'Date', 'Account', 'Amount', 'Comment',
-                              'Stmt description', 'Stmt date']:
+                    for x in txn_header:
                         d.pop(x, None)
                     for k, v in list(d.items()):
                         if v is None or v.strip() == '':
@@ -340,9 +354,9 @@ class Journal():
             with open(bassertions, 'r', encoding=encoding) as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    dt = date.fromisoformat(row['Date'])
-                    acc = row['Account']
-                    balance = Decimal(row['Balance'])
+                    dt = date.fromisoformat(row[bassertion_header.date])
+                    acc = row[bassertion_header.account]
+                    balance = Decimal(row[bassertion_header.balance])
                     bs.append(BAssertion(date=dt, acc_qname=acc, balance=balance))
             j.add_bassertions(bs)
 
@@ -352,23 +366,22 @@ class Journal():
                 reader = csv.DictReader(f)
 
                 for row in reader:
-                    start = date.fromisoformat(row['Start date'])
-                    acc = row['Account']
-                    amount = Decimal(row['Amount'])
-                    comment = empty_is_none(row.get('Comment'))
-                    frequency = empty_is_none(row.get('Frequency'))
-                    interval = empty_is_none(row.get('Interval'))
+                    start = date.fromisoformat(row[target_header.start_date])
+                    acc = row[target_header.account]
+                    amount = Decimal(row[target_header.amount])
+                    comment = empty_is_none(row.get(target_header.comment))
+                    frequency = empty_is_none(row.get(target_header.frequency))
+                    interval = empty_is_none(row.get(target_header.interval))
                     if interval:
                         interval = int(interval)
-                    count = empty_is_none(row.get('Count'))
+                    count = empty_is_none(row.get(target_header.count))
                     if count:
                         count = int(count)
-                    until = empty_is_none(row.get('Until'))
+                    until = empty_is_none(row.get(target_header.until))
                     if until:
                         until = date.fromisoformat(until)
                     d = row.copy()
-                    for x in ['Start date', 'Account', 'Amount', 'Comment', 'Frequency',
-                              'Interval', 'Count', 'Until']:
+                    for x in target_header:
                         d.pop(x, None)
                     for k, v in list(d.items()):
                         if v is None or v.strip() == '':

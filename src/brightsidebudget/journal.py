@@ -1,10 +1,13 @@
 import csv
+from pathlib import PosixPath
 import polars as pl
 from datetime import date
 from decimal import Decimal
 from typing import Callable, Union
 from brightsidebudget.account import Account, QName
 from brightsidebudget.bassertion import BAssertion
+from brightsidebudget.i18n import AccountHeader, BAssertionHeader, DataframeHeader, \
+    TargetHeader, TxnHeader
 from brightsidebudget.posting import Posting, RPosting, Txn, txn_from_postings
 
 
@@ -22,6 +25,7 @@ class Journal():
         self.postings: list[Posting] = []
         self.targets: list[RPosting] = []
         self.bassertions: list[BAssertion] = []
+        self._bassertions_set: set[tuple[date, QName]] = set()
         self.txns_dict: dict[int, Txn] = {}
         # _full_qname_dict: A dictionary that maps a full qualified name to an
         # account
@@ -205,6 +209,11 @@ class Journal():
             # Update to full qname
             b.acc_qname = self.full_qname(b.acc_qname)
 
+            # Check for duplicates
+            if (b.date, b.acc_qname) in self._bassertions_set:
+                raise ValueError(f'BAssertion {b.date} {b.acc_qname} already exists')
+            self._bassertions_set.add((b.date, b.acc_qname))
+
         for b in bassertions:
             self.bassertions.append(b)
 
@@ -277,12 +286,25 @@ class Journal():
     @classmethod
     def from_csv(cls, accounts: str, postings: Union[str, list[str]],
                  bassertions: Union[str, None] = None,
-                 targets: Union[str, None] = None, encoding: str = 'utf-8'):
+                 targets: Union[str, None] = None, *,
+                 encoding: str = 'utf-8',
+                 acc_header: Union[AccountHeader, None] = None,
+                 txn_header: Union[TxnHeader, None] = None,
+                 bassertion_header: Union[BAssertionHeader, None] = None,
+                 target_header: Union[TargetHeader, None] = None):
         """
         Loads a journal from CSV files.
         """
-        if isinstance(postings, str):
+        if isinstance(postings, (str, PosixPath)):
             postings = [postings]
+        if acc_header is None:
+            acc_header = AccountHeader()
+        if txn_header is None:
+            txn_header = TxnHeader()
+        if bassertion_header is None:
+            bassertion_header = BAssertionHeader()
+        if target_header is None:
+            target_header = TargetHeader()
 
         def empty_is_none(x: Union[str, None]) -> Union[str, None]:
             return None if x == '' else x
@@ -292,9 +314,9 @@ class Journal():
         with open(accounts, 'r', encoding=encoding) as f:
             reader = csv.DictReader(f)
             for row in reader:
-                qname = row['Account']
+                qname = row[acc_header.account]
                 d = row.copy()
-                for x in ['Account']:
+                for x in acc_header:
                     d.pop(x, None)
                 for k, v in list(d.items()):
                     if v is None or v.strip() == '':
@@ -307,18 +329,17 @@ class Journal():
             with open(p_file, 'r', encoding=encoding) as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    txn_id = int(row['Txn'])
-                    dt = date.fromisoformat(row['Date'])
-                    acc = row['Account']
-                    amnt = Decimal(row['Amount'])
-                    comment = empty_is_none(row.get('Comment'))
-                    stmt_desc = empty_is_none(row.get('Stmt description'))
-                    stmt_date = empty_is_none(row.get('Stmt date'))
+                    txn_id = int(row[txn_header.txn])
+                    dt = date.fromisoformat(row[txn_header.date])
+                    acc = row[txn_header.account]
+                    amnt = Decimal(row[txn_header.amount])
+                    comment = empty_is_none(row.get(txn_header.comment))
+                    stmt_desc = empty_is_none(row.get(txn_header.stmt_desc))
+                    stmt_date = empty_is_none(row.get(txn_header.stmt_date))
                     if stmt_date:
                         stmt_date = date.fromisoformat(stmt_date)
                     d = row.copy()
-                    for x in ['Txn', 'Date', 'Account', 'Amount', 'Comment',
-                              'Stmt description', 'Stmt date']:
+                    for x in txn_header:
                         d.pop(x, None)
                     for k, v in list(d.items()):
                         if v is None or v.strip() == '':
@@ -334,9 +355,9 @@ class Journal():
             with open(bassertions, 'r', encoding=encoding) as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    dt = date.fromisoformat(row['Date'])
-                    acc = row['Account']
-                    balance = Decimal(row['Balance'])
+                    dt = date.fromisoformat(row[bassertion_header.date])
+                    acc = row[bassertion_header.account]
+                    balance = Decimal(row[bassertion_header.balance])
                     bs.append(BAssertion(date=dt, acc_qname=acc, balance=balance))
             j.add_bassertions(bs)
 
@@ -346,23 +367,22 @@ class Journal():
                 reader = csv.DictReader(f)
 
                 for row in reader:
-                    start = date.fromisoformat(row['Start date'])
-                    acc = row['Account']
-                    amount = Decimal(row['Amount'])
-                    comment = empty_is_none(row.get('Comment'))
-                    frequency = empty_is_none(row.get('Frequency'))
-                    interval = empty_is_none(row.get('Interval'))
+                    start = date.fromisoformat(row[target_header.start_date])
+                    acc = row[target_header.account]
+                    amount = Decimal(row[target_header.amount])
+                    comment = empty_is_none(row.get(target_header.comment))
+                    frequency = empty_is_none(row.get(target_header.frequency))
+                    interval = empty_is_none(row.get(target_header.interval))
                     if interval:
                         interval = int(interval)
-                    count = empty_is_none(row.get('Count'))
+                    count = empty_is_none(row.get(target_header.count))
                     if count:
                         count = int(count)
-                    until = empty_is_none(row.get('Until'))
+                    until = empty_is_none(row.get(target_header.until))
                     if until:
                         until = date.fromisoformat(until)
                     d = row.copy()
-                    for x in ['Start date', 'Account', 'Amount', 'Comment', 'Frequency',
-                              'Interval', 'Count', 'Until']:
+                    for x in target_header:
                         d.pop(x, None)
                     for k, v in list(d.items()):
                         if v is None or v.strip() == '':
@@ -520,6 +540,8 @@ class Journal():
 
     def to_polars(self,
                   ps: Union[list[Posting], None] = None,
+                  *,
+                  df_header: Union[DataframeHeader, None] = None,
                   short_qname_length: Union[dict[QName, int], None] = None) -> pl.DataFrame:
         """
         Returns a polars DataFrame with the postings, including all tags from
@@ -529,7 +551,7 @@ class Journal():
         If `ps` is None, the function uses all the postings in the journal.
         short_qname_lenght: A dictionary that maps a QName to the minimum length
 
-        The columns are:
+        The default columns are:
             - Txn: Transaction ID
             - Date: Posting date
             - Account: Account full qualified name
@@ -544,6 +566,8 @@ class Journal():
         """
         if short_qname_length is None:
             short_qname_length = {}
+        if df_header is None:
+            df_header = DataframeHeader()
         if ps is None:
             ps = self.postings
         known_keys = set(self.all_postings_tags(ps))
@@ -572,35 +596,35 @@ class Journal():
             else:
                 short_qname = self.short_qname(p.acc_qname)
             d = {
-                'Txn': p.txnid,
-                'Date': p.date,
-                'Account': p.acc_qname.qstr,
-                'Account short name': short_qname.qstr,
-                'Amount': float(p.amount),
-                'Comment': p.comment,
-                'Stmt date': p.stmt_date,
-                'Stmt description': p.stmt_desc,
+                df_header.txn: p.txnid,
+                df_header.date: p.date,
+                df_header.account: p.acc_qname.qstr,
+                df_header.account_short: short_qname.qstr,
+                df_header.amount: float(p.amount),
+                df_header.comment: p.comment,
+                df_header.stmt_date: p.stmt_date,
+                df_header.stmt_desc: p.stmt_desc,
                 **p.tags
             }
             for i, group in enumerate(p.acc_qname.qlist):
-                d[f'Account {i + 1}'] = group
+                d[f'{df_header.account} {i + 1}'] = group
             acc = self.account(p.acc_qname)
             for k in accs_keys:
                 d[accs_keys_map[k]] = acc.tag(k)
             data.append(d)
         # Define schema
         schema = {
-            'Txn': pl.UInt32,
-            'Date': pl.Date,
-            'Account': pl.Utf8,
-            'Account short name': pl.Utf8,
-            'Amount': pl.Float64,
-            'Comment': pl.Utf8,
-            'Stmt date': pl.Date,
-            'Stmt description': pl.Utf8
+            df_header.txn: pl.UInt32,
+            df_header.date: pl.Date,
+            df_header.account: pl.Utf8,
+            df_header.account_short: pl.Utf8,
+            df_header.amount: pl.Float64,
+            df_header.comment: pl.Utf8,
+            df_header.stmt_date: pl.Date,
+            df_header.stmt_desc: pl.Utf8
         }
         for i in range(1, max_depth + 1):
-            schema[f'Account {i}'] = pl.Utf8
+            schema[f'{df_header.account} {i}'] = pl.Utf8
         for k in known_keys:
             schema[k] = pl.Utf8
         return pl.DataFrame(data, schema=schema)
@@ -611,18 +635,21 @@ class Journal():
                    use_short_qname: bool = False,
                    short_qname_length: Union[dict[QName, int], None] = None,
                    renumber: bool = False,
+                   txn_header: Union[TxnHeader, None] = None,
                    encoding="utf8"):
         """
-        Write the postings to a one or more CSV files.
+        Write the postings to one or more CSV files.
         """
         if short_qname_length is None:
             short_qname_length = {}
         if txns is None:
             txns = self.txns_dict.values()
+        if txn_header is None:
+            txn_header = TxnHeader()
 
         txns = sorted(txns, key=lambda x: (x.date, x.txnid))
 
-        if isinstance(filefunc, str):
+        if isinstance(filefunc, (str, PosixPath)):
             filename = filefunc
 
             def filefunc(_):
@@ -646,8 +673,9 @@ class Journal():
         for file, ps in file_dict.items():
             with open(file, "w", encoding=encoding) as f:
                 writer = csv.writer(f, lineterminator="\n")
-                header = ['Txn', 'Date', 'Account', 'Amount', 'Stmt date', 'Comment',
-                          'Stmt description']
+                header = [txn_header.txn, txn_header.date, txn_header.account,
+                          txn_header.amount, txn_header.stmt_date, txn_header.comment,
+                          txn_header.stmt_desc]
                 p_tag_keys = self.all_postings_tags(ps)
                 header += p_tag_keys
                 writer.writerow(header)

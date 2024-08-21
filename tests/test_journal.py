@@ -2,13 +2,17 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
-from brightsidebudget import Journal, BAssertion
-from brightsidebudget.account import Account
+from brightsidebudget import Journal, BAssertion, Account, AccountHeader, TxnHeader, \
+    BAssertionHeader, TargetHeader
 
 
 def test_from_csv(accounts_file, txns_file, bassertions_file, budget_file):
     j = Journal.from_csv(accounts=accounts_file, postings=txns_file,
                          bassertions=bassertions_file, targets=budget_file)
+    verify_from_csv(j)
+
+
+def verify_from_csv(j: Journal):
     assert len(j.accounts) == 17
     assert len(j.postings) == 8
     assert len(j.bassertions) == 6
@@ -17,6 +21,60 @@ def test_from_csv(accounts_file, txns_file, bassertions_file, budget_file):
     assert "Tag 1" not in a.tags
     a2 = j.account('Assets')
     assert "Tag 1" in a2.tags
+    assert len(j.txns_dict) == 2
+    txn2 = j.txns_dict[2]
+    assert txn2.postings[0].stmt_desc == 'Super market'
+    for a in j.accounts:
+        assert len(a.tags) in [1, 2]
+
+
+def test_from_csv_i18n(accounts_file, txns_file, bassertions_file, budget_file,
+                       tmp_path):
+    # Change the header to a non-English language and use StringIO
+    with open(accounts_file, 'r') as f:
+        content = f.read()
+    content = content.replace('Account', 'Compte')
+    accounts_file = tmp_path / 'accounts.csv'
+    with open(accounts_file, 'w') as f:
+        f.write(content)
+
+    with open(txns_file, 'r') as f:
+        content = f.read()
+    content = content.replace('Txn,Date,Account,Amount,Statement description',
+                              'Txn2,Date2,Compte,Montant,Description du relevé')
+    txns_file = tmp_path / 'txns.csv'
+    with open(txns_file, 'w') as f:
+        f.write(content)
+
+    with open(bassertions_file, 'r') as f:
+        content = f.read()
+    content = content.replace('Date,Account,Balance',
+                              'Date2,Compte,Solde')
+    bassertions_file = tmp_path / 'bassertions.csv'
+    with open(bassertions_file, 'w') as f:
+        f.write(content)
+
+    with open(budget_file, 'r') as f:
+        content = f.read()
+    content = content.replace('Start date,Account,Amount,Comment,Frequency,Interval,Count,Until',
+                              'Début,Compte,Montant,Commentaire,Fréquence,Intervalle,Compter,Fin')
+    budget_file = tmp_path / 'budget.csv'
+    with open(budget_file, 'w') as f:
+        f.write(content)
+
+    acc_header = AccountHeader(account='Compte')
+    txn_header = TxnHeader(account='Compte', date='Date2', amount='Montant', txn='Txn2',
+                           stmt_desc='Description du relevé')
+    bassertion_header = BAssertionHeader(account='Compte', date='Date2', balance='Solde')
+    target_header = TargetHeader(account='Compte', start_date='Début', amount='Montant',
+                                 comment='Commentaire', frequency='Fréquence',
+                                 interval='Intervalle',
+                                 count='Compter', until='Fin')
+    j = Journal.from_csv(accounts=accounts_file, postings=txns_file,
+                         bassertions=bassertions_file, targets=budget_file,
+                         acc_header=acc_header, txn_header=txn_header,
+                         bassertion_header=bassertion_header, target_header=target_header)
+    verify_from_csv(j)
 
 
 def test_check_balances(accounts_file, txns_file, bassertions_file):
@@ -175,3 +233,36 @@ def test_short_qnames_2():
     assert j.short_qname('Checking:Foo').qstr == 'Checking:Foo'
     assert j.full_qname('Checking:Foo').qstr == 'Checking:Foo'
     assert j.account('Checking:Foo').qname.qstr == 'Checking:Foo'
+
+
+def test_duplicate_balance():
+    j = Journal()
+    j.add_accounts([Account(qname='Assets')])
+    j.add_bassertions([BAssertion(date=date(2021, 1, 1), acc_qname='Assets', balance=Decimal(100))])
+    with pytest.raises(ValueError):
+        j.add_bassertions([BAssertion(date=date(2021, 1, 1), acc_qname='Assets',
+                                      balance=Decimal(100))])
+
+    j.add_accounts([Account(qname='Assets:Checking')])
+    j.add_bassertions([BAssertion(date=date(2021, 1, 1), acc_qname='Assets:Checking',
+                                  balance=Decimal(100))])
+    with pytest.raises(ValueError):
+        j.add_bassertions([BAssertion(date=date(2021, 1, 1), acc_qname='Checking',
+                                      balance=Decimal(100))])
+
+
+def test_write_txns(accounts_file, txns_file, tmp_path):
+    j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
+    tmp_file = tmp_path / 'txns.csv'
+    j.write_txns(filefunc=tmp_file)
+    with open(tmp_file, 'r') as f:
+        header = f.readline()
+    assert header == 'Txn,Date,Account,Amount,Statement date,Comment,Statement description\n'
+
+    txnheader = TxnHeader(account='Account2', date='Date2', amount='Amount2', txn='Txn2',
+                          stmt_date='Statement date2', comment='Comment2',
+                          stmt_desc='Statement description2')
+    j.write_txns(filefunc=tmp_file, txn_header=txnheader)
+    with open(tmp_file, 'r') as f:
+        header = f.readline()
+    assert header == 'Txn2,Date2,Account2,Amount2,Statement date2,Comment2,Statement description2\n'

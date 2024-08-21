@@ -9,6 +9,7 @@ the exception that the versions 0.*.* may have breaking changes in minor version
 ## [0.5.8]
 ### Added
 - Add a check to prevent adding duplicate balance assertions in the `Journal` class.
+- Add i18n for file headers
 
 ### Removed
 - Removed unused functions in the `report` module.

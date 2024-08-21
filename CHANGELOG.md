@@ -10,6 +10,9 @@ the exception that the versions 0.*.* may have breaking changes in minor version
 ### Added
 - Add a check to prevent adding duplicate balance assertions in the `Journal` class.
 
+### Removed
+- Removed unused functions in the `report` module.
+
 ## [0.5.7]
 ### Fixed
 - `Txn` constructor now checks that the dates of the postings are the same.

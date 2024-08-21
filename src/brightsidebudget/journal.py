@@ -635,6 +635,7 @@ class Journal():
                    use_short_qname: bool = False,
                    short_qname_length: Union[dict[QName, int], None] = None,
                    renumber: bool = False,
+                   txn_header: Union[TxnHeader, None] = None,
                    encoding="utf8"):
         """
         Write the postings to one or more CSV files.
@@ -643,10 +644,12 @@ class Journal():
             short_qname_length = {}
         if txns is None:
             txns = self.txns_dict.values()
+        if txn_header is None:
+            txn_header = TxnHeader()
 
         txns = sorted(txns, key=lambda x: (x.date, x.txnid))
 
-        if isinstance(filefunc, str):
+        if isinstance(filefunc, (str, PosixPath)):
             filename = filefunc
 
             def filefunc(_):
@@ -670,8 +673,9 @@ class Journal():
         for file, ps in file_dict.items():
             with open(file, "w", encoding=encoding) as f:
                 writer = csv.writer(f, lineterminator="\n")
-                header = ['Txn', 'Date', 'Account', 'Amount', 'Stmt date', 'Comment',
-                          'Stmt description']
+                header = [txn_header.txn, txn_header.date, txn_header.account,
+                          txn_header.amount, txn_header.stmt_date, txn_header.comment,
+                          txn_header.stmt_desc]
                 p_tag_keys = self.all_postings_tags(ps)
                 header += p_tag_keys
                 writer.writerow(header)

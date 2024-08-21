@@ -249,3 +249,20 @@ def test_duplicate_balance():
     with pytest.raises(ValueError):
         j.add_bassertions([BAssertion(date=date(2021, 1, 1), acc_qname='Checking',
                                       balance=Decimal(100))])
+
+
+def test_write_txns(accounts_file, txns_file, tmp_path):
+    j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
+    tmp_file = tmp_path / 'txns.csv'
+    j.write_txns(filefunc=tmp_file)
+    with open(tmp_file, 'r') as f:
+        header = f.readline()
+    assert header == 'Txn,Date,Account,Amount,Statement date,Comment,Statement description\n'
+
+    txnheader = TxnHeader(account='Account2', date='Date2', amount='Amount2', txn='Txn2',
+                          stmt_date='Statement date2', comment='Comment2',
+                          stmt_desc='Statement description2')
+    j.write_txns(filefunc=tmp_file, txn_header=txnheader)
+    with open(tmp_file, 'r') as f:
+        header = f.readline()
+    assert header == 'Txn2,Date2,Account2,Amount2,Statement date2,Comment2,Statement description2\n'

@@ -92,8 +92,8 @@ def add_relative_month_column(df: pl.DataFrame,
         )
 
 
-def add_txn_accounts_colum(df: pl.DataFrame,
-                           col_name: str = "Txn Accounts") -> pl.DataFrame:
+def add_txn_accounts_column(df: pl.DataFrame,
+                            col_name: str = "Txn Accounts") -> pl.DataFrame:
     """
     Add a column with the accounts involved in the transaction.
     """

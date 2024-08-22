@@ -175,7 +175,7 @@ def test_add_txn_accounts_colum():
                          "Checking | Salary", "Checking | Salary",
                          "Checking | Food", "Checking | Food", "Checking | Food"]
     }, schema={"Txn": pl.Int32, "Account short name": pl.Utf8, "Txn Accounts": pl.Utf8})
-    result = r.add_txn_accounts_colum(df)
+    result = r.add_txn_accounts_column(df)
 
     assert result.equals(expected)
 

@@ -205,3 +205,23 @@ def test_to_polars_i18n(accounts_file, txns_file):
                                          "Account2 2",
                                          "Account2 3", "Account short name2", "Number",
                                          "Tag 1"])
+
+    df = r.add_fiscal_month_column(df, first_fiscal_month=4, col_name="Fiscal Month2",
+                                   date_col="Date2")
+    df = r.add_fiscal_year_column(df, first_fiscal_month=4, col_name="Fiscal Year2",
+                                  date_col="Date2")
+    df = r.add_year_month_column(df, col_name="Year-Month2", date_col="Date2")
+    df = r.add_month_column(df, month_type="short", col_name="Month2", date_col="Date2")
+    df = r.add_year_column(df, col_name="Year2", date_col="Date2")
+    df = r.add_relative_month_column(df, col_name="Relative Month2", today=date(2021, 2, 1),
+                                     date_col="Date2")
+    df = r.add_txn_accounts_column(df, col_name="Txn Accounts2", txn_col="Txn2",
+                                   acc_name="Account short name2")
+
+    assert sorted(df.columns) == sorted(["Txn2", "Date2", "Account2", "Amount2", "Comment2",
+                                         "Stmt description2", "Stmt date2", "Account2 1",
+                                         "Account2 2",
+                                         "Account2 3", "Account short name2", "Number",
+                                         "Tag 1", "Fiscal Month2", "Fiscal Year2",
+                                         "Year-Month2", "Month2", "Year2",
+                                         "Relative Month2", "Txn Accounts2"])

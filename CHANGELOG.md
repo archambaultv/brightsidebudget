@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
+## [0.5.10]
+## Added
+- Add parameter in report module to specify the name of the existing colums
+
 ## [0.5.9]
 ### Fixed
 - Fixed a typo in the report module. `add_txn_accounts_colum` -> `add_txn_accounts_column`

@@ -13,7 +13,7 @@ def test_from_csv(accounts_file, txns_file, bassertions_file, budget_file):
 
 
 def verify_from_csv(j: Journal):
-    assert len(j.accounts) == 17
+    assert len(j.accounts) == 18
     assert len(j.postings) == 8
     assert len(j.bassertions) == 6
     assert len(j.targets) == 4
@@ -156,14 +156,14 @@ def test_empty_journal():
 
 def test_no_txns(accounts_file):
     j = Journal.from_csv(accounts=accounts_file, postings=[])
-    assert len(j.accounts) == 17
+    assert len(j.accounts) == 18
     assert len(j.postings) == 0
     assert len(j.bassertions) == 0
 
 
 def test_no_bassertions(accounts_file, txns_file):
     j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
-    assert len(j.accounts) == 17
+    assert len(j.accounts) == 18
     assert len(j.postings) == 8
     assert len(j.bassertions) == 0
 
@@ -266,3 +266,12 @@ def test_write_txns(accounts_file, txns_file, tmp_path):
     with open(tmp_file, 'r') as f:
         header = f.readline()
     assert header == 'Txn2,Date2,Account2,Amount2,Statement date2,Comment2,Statement description2\n'
+
+
+def test_from_balances(accounts_file, bassertions_file):
+    j = Journal.from_balances(accounts=accounts_file, bassertions=bassertions_file,
+                              pnl_account="Profit and Loss")
+    assert len(j.accounts) == 18
+    assert len(j.postings) == 12
+    assert len(j.txns_dict) == 6
+    assert len(j.bassertions) == 6

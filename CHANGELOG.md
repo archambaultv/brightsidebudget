@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
+## [0.5.12]
+### Added
+- Add `force_zero_txn` method to `Journal` class `adjust_for_bassertion` method
+  to force the creation of a zero transaction when the balance assertion is
+  already satisfied.
+
 ## [0.5.11]
 ### Added
 - Add `from_balances` method to `Journal` class to create a journal from a list of balances.

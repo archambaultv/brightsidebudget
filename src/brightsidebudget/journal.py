@@ -462,10 +462,11 @@ class Journal():
 
     def adjust_for_bassertion(self, b: BAssertion, counterpart: Union[QName, str],
                               child: Union[QName, str, None] = None,
+                              force_zero_txn: bool = False,
                               comment: Union[str, None] = None) -> Union[Txn, None]:
         """
-        Adjusts the journal to match the balance assertion. The account object in
-        the balance assertion can be a string or any object with a 'qname'.
+        Adjusts the journal to match the balance assertion. Does not check if
+        a posting for the same account exists after the balance assertion date.
 
         The counterpart account is used to balance the transaction. If provided
         child is the account to use instead of the one in the balance assertion.
@@ -474,7 +475,7 @@ class Journal():
 
         actual = self.balance(b.date, b.acc_qname, use_stmt_date=True)
         diff = b.balance - actual
-        if diff == 0:
+        if diff == 0 and not force_zero_txn:
             return None
 
         if child is None:

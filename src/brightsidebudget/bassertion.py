@@ -1,7 +1,9 @@
+import csv
 from datetime import date
 from decimal import Decimal
 from typing import Union
 from brightsidebudget.account import QName
+from brightsidebudget.i18n import BAssertionHeader
 
 
 class BAssertion():
@@ -33,3 +35,23 @@ class BAssertion():
 
     def copy(self) -> 'BAssertion':
         return BAssertion(date=self.date, acc_qname=self._acc_qname, balance=self.balance)
+
+
+def load_balances(balances: str, encoding: str = "utf8",
+                  bassertion_header: Union[BAssertionHeader, None] = None) -> list[BAssertion]:
+    """
+    Load balance assertions from a CSV file. The file must have a header with the
+    date, account name, and balance. The account name is the qualified name of the
+    account.
+    """
+    if bassertion_header is None:
+        bassertion_header = BAssertionHeader()
+    bs = []
+    with open(balances, 'r', encoding=encoding) as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            dt = date.fromisoformat(row[bassertion_header.date])
+            acc = row[bassertion_header.account]
+            balance = Decimal(row[bassertion_header.balance])
+            bs.append(BAssertion(date=dt, acc_qname=acc, balance=balance))
+    return bs

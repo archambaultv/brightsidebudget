@@ -1,4 +1,6 @@
+import csv
 from typing import Union
+from brightsidebudget.i18n import AccountHeader
 
 
 class QName():
@@ -135,3 +137,27 @@ class Account():
 
     def __repr__(self):
         return self.__str__()
+
+
+def load_accounts(accounts: str, encoding: str = "utf8",
+                  acc_header: Union[AccountHeader, None] = None) -> list[Account]:
+    """
+    Load accounts from a CSV file. The file must have a header with the account name
+    and optional tags. The account name is the qualified name of the account. The
+    tags are optional and are key-value pairs.
+    """
+    if acc_header is None:
+        acc_header = AccountHeader()
+    accs = []
+    with open(accounts, 'r', encoding=encoding) as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            qname = row[acc_header.account]
+            d = row.copy()
+            for x in acc_header:
+                d.pop(x, None)
+            for k, v in list(d.items()):
+                if v is None or v.strip() == '':
+                    d.pop(k)
+            accs.append(Account(qname=qname, tags=d))
+    return accs

@@ -4,11 +4,11 @@ import polars as pl
 from datetime import date
 from decimal import Decimal
 from typing import Callable, Union
-from brightsidebudget.account import Account, QName
-from brightsidebudget.bassertion import BAssertion
+from brightsidebudget.account import Account, QName, load_accounts
+from brightsidebudget.bassertion import BAssertion, load_balances
 from brightsidebudget.i18n import AccountHeader, BAssertionHeader, DataframeHeader, \
     TargetHeader, TxnHeader
-from brightsidebudget.posting import Posting, RPosting, Txn, txn_from_postings
+from brightsidebudget.posting import Posting, RPosting, Txn, load_rpostings, txn_from_postings
 
 
 class Journal():
@@ -284,6 +284,37 @@ class Journal():
         return txns
 
     @classmethod
+    def from_balances(cls, accounts: str, bassertions: str,
+                      pnl_account: Union[QName, str], *,
+                      targets: Union[str, None] = None,
+                      encoding: str = 'utf-8',
+                      acc_header: Union[AccountHeader, None] = None,
+                      bassertion_header: Union[BAssertionHeader, None] = None,
+                      target_header: Union[TargetHeader, None] = None):
+        """
+        Loads a journal from a CSV file with account balances.
+        Creates a txn for each balance assertion. The counterpart account is
+        pnl_account.
+        """
+        j = cls()
+        accs = load_accounts(accounts, encoding=encoding, acc_header=acc_header)
+        j.add_accounts(accs)
+        if not j.is_valid_qname(pnl_account):
+            raise ValueError(f'PnL account {pnl_account} does not exist')
+
+        bs = load_balances(bassertions, encoding=encoding, bassertion_header=bassertion_header)
+        bs.sort(key=lambda x: x.date)
+        j.add_bassertions(bs)
+        for b in bs:
+            j.adjust_for_bassertion(b, counterpart=pnl_account)
+
+        if targets is not None:
+            ts = load_rpostings(targets, encoding=encoding, rposting_header=target_header)
+            j.add_targets(ts)
+
+        return j
+
+    @classmethod
     def from_csv(cls, accounts: str, postings: Union[str, list[str]],
                  bassertions: Union[str, None] = None,
                  targets: Union[str, None] = None, *,
@@ -297,31 +328,14 @@ class Journal():
         """
         if isinstance(postings, (str, PosixPath)):
             postings = [postings]
-        if acc_header is None:
-            acc_header = AccountHeader()
         if txn_header is None:
             txn_header = TxnHeader()
-        if bassertion_header is None:
-            bassertion_header = BAssertionHeader()
-        if target_header is None:
-            target_header = TargetHeader()
 
         def empty_is_none(x: Union[str, None]) -> Union[str, None]:
             return None if x == '' else x
 
         j = cls()
-        accs = []
-        with open(accounts, 'r', encoding=encoding) as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                qname = row[acc_header.account]
-                d = row.copy()
-                for x in acc_header:
-                    d.pop(x, None)
-                for k, v in list(d.items()):
-                    if v is None or v.strip() == '':
-                        d.pop(k)
-                accs.append(Account(qname=qname, tags=d))
+        accs = load_accounts(accounts, encoding=encoding, acc_header=acc_header)
         j.add_accounts(accs)
 
         ps: list[Posting] = []
@@ -351,45 +365,11 @@ class Journal():
         j.add_txns(txn_from_postings(ps), ignore_txnid=False)
 
         if bassertions is not None:
-            bs = []
-            with open(bassertions, 'r', encoding=encoding) as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    dt = date.fromisoformat(row[bassertion_header.date])
-                    acc = row[bassertion_header.account]
-                    balance = Decimal(row[bassertion_header.balance])
-                    bs.append(BAssertion(date=dt, acc_qname=acc, balance=balance))
+            bs = load_balances(bassertions, encoding=encoding, bassertion_header=bassertion_header)
             j.add_bassertions(bs)
 
         if targets is not None:
-            ts = []
-            with open(targets, 'r', encoding=encoding) as f:
-                reader = csv.DictReader(f)
-
-                for row in reader:
-                    start = date.fromisoformat(row[target_header.start_date])
-                    acc = row[target_header.account]
-                    amount = Decimal(row[target_header.amount])
-                    comment = empty_is_none(row.get(target_header.comment))
-                    frequency = empty_is_none(row.get(target_header.frequency))
-                    interval = empty_is_none(row.get(target_header.interval))
-                    if interval:
-                        interval = int(interval)
-                    count = empty_is_none(row.get(target_header.count))
-                    if count:
-                        count = int(count)
-                    until = empty_is_none(row.get(target_header.until))
-                    if until:
-                        until = date.fromisoformat(until)
-                    d = row.copy()
-                    for x in target_header:
-                        d.pop(x, None)
-                    for k, v in list(d.items()):
-                        if v is None or v.strip() == '':
-                            d.pop(k)
-                    ts.append(RPosting(start=start, acc_qname=acc, amount=amount,
-                                       comment=comment, frequency=frequency, interval=interval,
-                                       count=count, until=until, tags=d))
+            ts = load_rpostings(targets, encoding=encoding, rposting_header=target_header)
             j.add_targets(ts)
 
         return j

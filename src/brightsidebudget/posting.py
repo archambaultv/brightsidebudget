@@ -1,9 +1,11 @@
+import csv
 from datetime import date, datetime, timedelta
 from typing import Union
 from dateutil.relativedelta import relativedelta
 from decimal import Decimal
 from dateutil.rrule import rrule, DAILY, WEEKLY, MONTHLY, YEARLY
 from brightsidebudget.account import QName
+from brightsidebudget.i18n import TargetHeader
 
 
 class Posting():
@@ -212,3 +214,45 @@ class RPosting():
         return RPosting(start=self.start, acc_qname=self._acc_qname, amount=self.amount,
                         comment=self.comment, tags=self.tags.copy(), frequency=self.frequency,
                         interval=self.interval, count=self.count, until=self.until)
+
+
+def load_rpostings(rpostings: str, encoding: str = "utf8",
+                   rposting_header: Union[TargetHeader, None] = None) -> list[RPosting]:
+    """
+    Load recurrent postings from a CSV file.
+    """
+    if rposting_header is None:
+        rposting_header = TargetHeader()
+
+    def empty_is_none(x: Union[str, None]) -> Union[str, None]:
+        return None if x == '' else x
+
+    ts = []
+    with open(rpostings, 'r', encoding=encoding) as f:
+        reader = csv.DictReader(f)
+
+        for row in reader:
+            start = date.fromisoformat(row[rposting_header.start_date])
+            acc = row[rposting_header.account]
+            amount = Decimal(row[rposting_header.amount])
+            comment = empty_is_none(row.get(rposting_header.comment))
+            frequency = empty_is_none(row.get(rposting_header.frequency))
+            interval = empty_is_none(row.get(rposting_header.interval))
+            if interval:
+                interval = int(interval)
+            count = empty_is_none(row.get(rposting_header.count))
+            if count:
+                count = int(count)
+            until = empty_is_none(row.get(rposting_header.until))
+            if until:
+                until = date.fromisoformat(until)
+            d = row.copy()
+            for x in rposting_header:
+                d.pop(x, None)
+            for k, v in list(d.items()):
+                if v is None or v.strip() == '':
+                    d.pop(k)
+            ts.append(RPosting(start=start, acc_qname=acc, amount=amount,
+                               comment=comment, frequency=frequency, interval=interval,
+                               count=count, until=until, tags=d))
+    return ts

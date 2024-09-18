@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
+## [0.5.13]
+### Modified
+- `adjust_for_bassertion` method of `Journal` class now uses the existing
+  assertions and can process multiple assertions at once. It is rename
+  `adjust_for_bassertions`.
+
+### Removed
+- `from_balances` method of `Journal` class.
+
 ## [0.5.12]
 ### Added
 - Add `force_zero_txn` method to `Journal` class `adjust_for_bassertion` method

@@ -192,13 +192,16 @@ class Journal():
             max_id = max((t.txnid for t in txns), default=0)
             self._next_txn_id = max(max_id + 1, self._next_txn_id)
 
-    def add_bassertions(self, bassertions: list[BAssertion],
+    def add_bassertions(self, bassertions: Union[BAssertion, list[BAssertion]],
                         copy: bool = False):
         """
         Adds a list of balance assertions to the journal.
         The accounts in the balance assertions must exist in the journal.
         The accounts may be leaf accounts or parent accounts.
         """
+        if not isinstance(bassertions, list):
+            bassertions = [bassertions]
+
         if copy:
             bassertions = [b.copy() for b in bassertions]
 
@@ -282,37 +285,6 @@ class Journal():
 
         self._next_txn_id = id
         return txns
-
-    @classmethod
-    def from_balances(cls, accounts: str, bassertions: str,
-                      pnl_account: Union[QName, str], *,
-                      targets: Union[str, None] = None,
-                      encoding: str = 'utf-8',
-                      acc_header: Union[AccountHeader, None] = None,
-                      bassertion_header: Union[BAssertionHeader, None] = None,
-                      target_header: Union[TargetHeader, None] = None):
-        """
-        Loads a journal from a CSV file with account balances.
-        Creates a txn for each balance assertion. The counterpart account is
-        pnl_account.
-        """
-        j = cls()
-        accs = load_accounts(accounts, encoding=encoding, acc_header=acc_header)
-        j.add_accounts(accs)
-        if not j.is_valid_qname(pnl_account):
-            raise ValueError(f'PnL account {pnl_account} does not exist')
-
-        bs = load_balances(bassertions, encoding=encoding, bassertion_header=bassertion_header)
-        bs.sort(key=lambda x: x.date)
-        j.add_bassertions(bs)
-        for b in bs:
-            j.adjust_for_bassertion(b, counterpart=pnl_account)
-
-        if targets is not None:
-            ts = load_rpostings(targets, encoding=encoding, rposting_header=target_header)
-            j.add_targets(ts)
-
-        return j
 
     @classmethod
     def from_csv(cls, accounts: str, postings: Union[str, list[str]],
@@ -424,6 +396,18 @@ class Journal():
         else:
             return None
 
+    def account_bassertions(self, qname: Union[QName, str]) -> list[BAssertion]:
+        """
+        Returns the list of balance assertions for the account, sorted by date.
+        """
+        if isinstance(qname, str):
+            qname = QName(qname=qname)
+
+        full_qname = self.full_qname(qname)
+        bs = [b for b in self.bassertions if b.acc_qname == full_qname]
+        bs.sort(key=lambda x: x.date)
+        return bs
+
     def find_subset(self, amnt: Decimal,
                     qname: Union[QName, str],
                     start_date: date,
@@ -460,46 +444,58 @@ class Journal():
         else:
             return [ps[i] for i in subset]
 
-    def adjust_for_bassertion(self, b: BAssertion, counterpart: Union[QName, str],
-                              child: Union[QName, str, None] = None,
-                              force_zero_txn: bool = False,
-                              comment: Union[str, None] = None) -> Union[Txn, None]:
+    def adjust_for_bassertions(self,
+                               accounts: list[Union[QName, str]],
+                               counterparts: list[Union[QName, str]],
+                               children: list[Union[QName, str, None]] = None,
+                               force_zero_txn: bool = False,
+                               comment: Union[str, None] = None) -> list[Txn]:
         """
-        Adjusts the journal to match the balance assertion. Does not check if
-        a posting for the same account exists after the balance assertion date.
+        Adjusts the journal to match the balance assertions for the specified
+        accounts by creating a new transaction for each balance assertion
+        failure.
 
         The counterpart account is used to balance the transaction. If provided
         child is the account to use instead of the one in the balance assertion.
         It must be a descendant of the account in the balance assertion.
+
+        Use force_zero_txn to create a transaction even if the balance assertion
+        is met.
+
+        All lists must have the same length.
         """
+        if children is None:
+            children = [None] * len(accounts)
+        if len(accounts) != len(counterparts) or len(accounts) != len(children):
+            raise ValueError('All lists must have the same length')
+        txns = []
+        for acc, counterpart, child in zip(accounts, counterparts, children):
+            acc_qname = self.full_qname(acc)
+            counterpart = self.full_qname(counterpart)
+            if child is None:
+                child = acc_qname
+            else:
+                child = self.full_qname(child)
+                if not child.is_equal_or_descendant_of(acc_qname):
+                    msg = f'Child account {children} must be a descendant of {acc_qname}'
+                    raise ValueError(msg)
+            bs = self.account_bassertions(acc_qname)
 
-        actual = self.balance(b.date, b.acc_qname, use_stmt_date=True)
-        diff = b.balance - actual
-        if diff == 0 and not force_zero_txn:
-            return None
+            for b in bs:
+                actual = self.balance(b.date, b.acc_qname, use_stmt_date=True)
+                diff = b.balance - actual
+                if diff == 0 and not force_zero_txn:
+                    continue
 
-        if child is None:
-            child = self.full_qname(b.acc_qname)
-        else:
-            if isinstance(child, str):
-                child = QName(qname=child)
-
-            child = self.full_qname(child)
-            if not child.is_equal_or_descendant_of(b.acc_qname):
-                raise ValueError(f'Child account {child} must be a descendant of {b.acc_qname}')
-
-        if isinstance(counterpart, str):
-            counterpart = QName(qname=counterpart)
-
-        counterpart = self.full_qname(counterpart)
-        txnid = self.next_txn_id
-        p1 = Posting(txnid=txnid, date=b.date, acc_qname=child, amount=diff,
-                     comment=comment)
-        p2 = Posting(txnid=txnid, date=b.date, acc_qname=counterpart, amount=-diff,
-                     comment=comment)
-        t = Txn([p1, p2])
-        self.add_txns(t, ignore_txnid=False)
-        return t
+                txnid = self.next_txn_id
+                p1 = Posting(txnid=txnid, date=b.date, acc_qname=child, amount=diff,
+                             comment=comment)
+                p2 = Posting(txnid=txnid, date=b.date, acc_qname=counterpart, amount=-diff,
+                             comment=comment)
+                t = Txn([p1, p2])
+                self.add_txns(t, ignore_txnid=False)
+                txns.append(t)
+        return txns
 
     def all_postings_tags(self, ps: Union[list[Posting], None] = None) -> list[str]:
         """

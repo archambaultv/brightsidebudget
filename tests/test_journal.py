@@ -26,6 +26,10 @@ def verify_from_csv(j: Journal):
     assert txn2.postings[0].stmt_desc == 'Super market'
     for a in j.accounts:
         assert len(a.tags) in [1, 2]
+    b_tags = j.all_bassertions_tags()
+    assert b_tags == ["Comment"]
+    assert j.bassertions[4].tag("Comment") == "It is a nice house"
+    assert j.bassertions[0].tag("Comment") is None
 
 
 def test_from_csv_i18n(accounts_file, txns_file, bassertions_file, budget_file,
@@ -266,6 +270,21 @@ def test_write_txns(accounts_file, txns_file, tmp_path):
     with open(tmp_file, 'r') as f:
         header = f.readline()
     assert header == 'Txn2,Date2,Account2,Amount2,Statement date2,Comment2,Statement description2\n'
+
+
+def test_write_balances(accounts_file, bassertions_file, tmp_path):
+    j = Journal.from_csv(accounts=accounts_file, postings=[], bassertions=bassertions_file)
+    tmp_file = tmp_path / 'bassertions.csv'
+    j.write_bassertions(file=tmp_file)
+    with open(tmp_file, 'r') as f:
+        header = f.readline()
+    assert header == 'Date,Account,Balance,Comment\n'
+
+    bheader = BAssertionHeader(account='Account2', date='Date2', balance='Balance2')
+    j.write_bassertions(file=tmp_file, bheader=bheader)
+    with open(tmp_file, 'r') as f:
+        header = f.readline()
+    assert header == 'Date2,Account2,Balance2,Comment\n'
 
 
 def test_from_balances(accounts_file, bassertions_file):

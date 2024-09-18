@@ -519,6 +519,14 @@ class Journal():
             accs = self.accounts
         return list({k for a in accs for k in a.tags.keys()})
 
+    def all_bassertions_tags(self, bassertions: Union[list[BAssertion], None] = None) -> list[str]:
+        """
+        Returns a list of all tags used in the balance assertions.
+        """
+        if bassertions is None:
+            bassertions = self.bassertions
+        return list({k for b in self.bassertions for k in b.tags.keys()})
+
     def to_polars(self,
                   ps: Union[list[Posting], None] = None,
                   *,
@@ -609,6 +617,44 @@ class Journal():
         for k in known_keys:
             schema[k] = pl.Utf8
         return pl.DataFrame(data, schema=schema)
+
+    def write_bassertions(self, *,
+                          bassertions: Union[list[BAssertion], None] = None,
+                          file: Union[str, PosixPath] = "bassertions.csv",
+                          use_short_qname: bool = False,
+                          short_qname_length: Union[dict[QName, int], None] = None,
+                          bheader: Union[BAssertionHeader, None] = None,
+                          encoding="utf8"):
+        """
+        Write the balance assertions to a CSV file.
+        """
+        if short_qname_length is None:
+            short_qname_length = {}
+        if bassertions is None:
+            bassertions = self.bassertions
+        if bheader is None:
+            bheader = BAssertionHeader()
+
+        bassertions = sorted(bassertions, key=lambda x: (x.date, x.acc_qname))
+
+        with open(file, "w", encoding=encoding) as f:
+            writer = csv.writer(f, lineterminator="\n")
+            header = [bheader.date, bheader.account, bheader.balance]
+            b_tag_keys = self.all_bassertions_tags(bassertions)
+            header += b_tag_keys
+            writer.writerow(header)
+            for b in bassertions:
+                if use_short_qname:
+                    if b.acc_qname in short_qname_length:
+                        short = self.short_qname(b.acc_qname, short_qname_length[b.acc_qname])
+                    else:
+                        short = self.short_qname(b.acc_qname)
+                    row = [b.date, short, b.balance]
+                else:
+                    row = [b.date, b.acc_qname, b.balance]
+                for k in b_tag_keys:
+                    row.append(b.tag(k))
+                writer.writerow(row)
 
     def write_txns(self, *,
                    txns: Union[list[Txn], None] = None,

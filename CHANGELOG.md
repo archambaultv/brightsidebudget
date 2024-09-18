@@ -11,6 +11,10 @@ the exception that the versions 0.*.* may have breaking changes in minor version
 - Add `force_zero_txn` method to `Journal` class `adjust_for_bassertion` method
   to force the creation of a zero transaction when the balance assertion is
   already satisfied.
+- Add tags to `BAssertion` class.
+- Add `write_bassertions` method to `Journal` class to write balance assertions
+  to a CSV file.
+- Add `__lt__` method to `QName` class to compare qualified names.
 
 ## [0.5.11]
 ### Added

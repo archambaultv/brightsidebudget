@@ -90,6 +90,11 @@ class QName():
     def __hash__(self) -> int:
         return hash(self._qname)
 
+    def __lt__(self, other) -> bool:
+        if isinstance(other, QName):
+            return self._qlist < other._qlist
+        return False
+
     def __str__(self):
         return self._qname
 

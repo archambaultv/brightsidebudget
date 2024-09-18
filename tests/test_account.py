@@ -23,6 +23,13 @@ def test_qname():
 
     assert QName("A:B:C") == QName(["A", "B", "C"])
 
+    assert QName("A") < QName("B")
+    assert QName("A") < QName("A:B")
+    assert QName("A:B") < QName("A:C")
+    assert QName("A:B") < QName("AA:B")
+    assert QName("A:B") < QName("A!:B")
+    assert QName("AAA:B:C") < QName("B")
+
     for bad in ["A:", ":A", ":", "A::C", ""]:
         with pytest.raises(ValueError):
             QName(bad)

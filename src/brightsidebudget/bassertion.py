@@ -11,10 +11,12 @@ class BAssertion():
     A BAssertion (Balance Assertion) is a statement that a certain account
     should have a specific balance at a certain date.
     """
-    def __init__(self, *, date: date, acc_qname: Union[QName, str], balance: Decimal):
+    def __init__(self, *, date: date, acc_qname: Union[QName, str], balance: Decimal,
+                 tags: Union[dict[str, str], None] = None):
         self.date = date
         self._acc_qname = acc_qname if isinstance(acc_qname, QName) else QName(acc_qname)
         self.balance = balance
+        self.tags = tags or {}
 
     @property
     def acc_qname(self) -> QName:
@@ -33,8 +35,12 @@ class BAssertion():
     def __repr__(self):
         return self.__str__()
 
+    def tag(self, key: str) -> Union[str, None]:
+        return self.tags.get(key, None)
+
     def copy(self) -> 'BAssertion':
-        return BAssertion(date=self.date, acc_qname=self._acc_qname, balance=self.balance)
+        return BAssertion(date=self.date, acc_qname=self._acc_qname, balance=self.balance,
+                          tags=self.tags.copy())
 
 
 def load_balances(balances: str, encoding: str = "utf8",
@@ -53,5 +59,11 @@ def load_balances(balances: str, encoding: str = "utf8",
             dt = date.fromisoformat(row[bassertion_header.date])
             acc = row[bassertion_header.account]
             balance = Decimal(row[bassertion_header.balance])
-            bs.append(BAssertion(date=dt, acc_qname=acc, balance=balance))
+            d = row.copy()
+            for x in bassertion_header:
+                d.pop(x, None)
+            for k, v in list(d.items()):
+                if v is None or v.strip() == '':
+                    d.pop(k)
+            bs.append(BAssertion(date=dt, acc_qname=acc, balance=balance, tags=d))
     return bs

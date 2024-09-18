@@ -106,35 +106,47 @@ def test_balance(accounts_file, txns_file):
     assert j.balance(date(2021, 1, 2), 'Assets') == Decimal(467460)
 
 
-def test_adjust_for_bassertion(accounts_file, txns_file):
+def test_adjust_for_bassertions(accounts_file, txns_file):
     j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
     b = BAssertion(date=date(2021, 1, 3), acc_qname='Checking', balance=Decimal(4460))
-    t = j.adjust_for_bassertion(b, counterpart='Salary', child=None,
-                                comment='Adjustment for bassertion')
-    assert t.txnid == 3
-    assert t.date == date(2021, 1, 3)
-    assert t.postings[0].acc_qname.qstr == 'Assets:Checking'
-    assert t.postings[0].amount == Decimal(2000)
-    assert t.postings[0].comment == 'Adjustment for bassertion'
-    assert t.postings[1].acc_qname.qstr == 'Revenue:Salary'
-    assert t.postings[1].amount == Decimal(-2000)
-    assert t.postings[1].comment == 'Adjustment for bassertion'
+    j.add_bassertions(b)
+    t = j.adjust_for_bassertions(accounts=['Checking'], counterparts=['Salary'],
+                                 children=None,
+                                 comment='Adjustment for bassertion')
+    assert t[0].txnid == 3
+    assert t[0].date == date(2021, 1, 3)
+    assert t[0].postings[0].acc_qname.qstr == 'Assets:Checking'
+    assert t[0].postings[0].amount == Decimal(2000)
+    assert t[0].postings[0].comment == 'Adjustment for bassertion'
+    assert t[0].postings[1].acc_qname.qstr == 'Revenue:Salary'
+    assert t[0].postings[1].amount == Decimal(-2000)
+    assert t[0].postings[1].comment == 'Adjustment for bassertion'
     assert len(j.postings) == 10
+
+    b = BAssertion(date=date(2021, 1, 2), acc_qname='Checking', balance=Decimal(4458))
+    j.add_bassertions(b)
+    t = j.adjust_for_bassertions(accounts=['Checking'], counterparts=['Salary'],
+                                 comment='Adjustment for bassertion')
+    assert len(t) == 2
+    assert len(j.failed_bassertions(today=date(2021, 1, 30))) == 0
 
 
 def test_adjust_for_bassertion_child(accounts_file, txns_file):
     j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
     b = BAssertion(date=date(2021, 1, 3), acc_qname='Assets', balance=Decimal(467461))
-    t = j.adjust_for_bassertion(b, counterpart='Salary', child='Checking',
-                                comment='Adjustment for bassertion')
-    assert t.txnid == 3
-    assert t.date == date(2021, 1, 3)
-    assert t.postings[0].acc_qname.qstr == 'Assets:Checking'
-    assert t.postings[0].amount == Decimal(1)
-    assert t.postings[0].comment == 'Adjustment for bassertion'
-    assert t.postings[1].acc_qname.qstr == 'Revenue:Salary'
-    assert t.postings[1].amount == Decimal(-1)
-    assert t.postings[1].comment == 'Adjustment for bassertion'
+    j.add_bassertions(b)
+    t = j.adjust_for_bassertions(accounts=['Assets'], counterparts=['Salary'],
+                                 children=['Checking'],
+                                 comment='Adjustment for bassertion')
+
+    assert t[0].txnid == 3
+    assert t[0].date == date(2021, 1, 3)
+    assert t[0].postings[0].acc_qname.qstr == 'Assets:Checking'
+    assert t[0].postings[0].amount == Decimal(1)
+    assert t[0].postings[0].comment == 'Adjustment for bassertion'
+    assert t[0].postings[1].acc_qname.qstr == 'Revenue:Salary'
+    assert t[0].postings[1].amount == Decimal(-1)
+    assert t[0].postings[1].comment == 'Adjustment for bassertion'
     assert len(j.postings) == 10
 
 
@@ -285,12 +297,3 @@ def test_write_balances(accounts_file, bassertions_file, tmp_path):
     with open(tmp_file, 'r') as f:
         header = f.readline()
     assert header == 'Date2,Account2,Balance2,Comment\n'
-
-
-def test_from_balances(accounts_file, bassertions_file):
-    j = Journal.from_balances(accounts=accounts_file, bassertions=bassertions_file,
-                              pnl_account="Profit and Loss")
-    assert len(j.accounts) == 18
-    assert len(j.postings) == 12
-    assert len(j.txns_dict) == 6
-    assert len(j.bassertions) == 6

@@ -1,7 +1,7 @@
 import csv
 from pathlib import PosixPath
 import polars as pl
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Callable, Union
 from brightsidebudget.account import Account, QName, clean_tags, load_accounts
@@ -261,6 +261,17 @@ class Journal():
                 balance += p.amount
 
         return balance
+
+    def flow(self, start_date: date, end_date: date, qname: Union[QName, str],
+             use_stmt_date: bool = False) -> Decimal:
+        """
+        Returns the flow of an account between two dates (inclusive).
+        """
+        if start_date > end_date:
+            raise ValueError('start_date must be before end_date')
+        start_date = start_date - timedelta(days=1)
+        return self.balance(end_date, qname, use_stmt_date) - self.balance(start_date, qname,
+                                                                           use_stmt_date)
 
     def budget_txns(self, start_date: date, end_date: date,
                     counterpart: Union[QName, str]) -> list[Txn]:

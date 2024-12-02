@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
+## [0.5.15]
+### Added
+- Add `flow` method to `Journal` class to compute the flow of an account.
+
 ## [0.5.14]
 ### Fixed
 - Better error reporting when a CSV line has more columns than the header.

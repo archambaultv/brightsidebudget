@@ -302,3 +302,15 @@ def test_write_balances(accounts_file, bassertions_file, tmp_path):
 def test_too_many_columns(accounts_too_many_columns):
     with pytest.raises(ValueError):
         Journal.from_csv(accounts=accounts_too_many_columns)
+
+
+def test_flow(accounts_file, txns_file):
+    j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
+    assert j.flow(date(2021, 1, 1), date(2021, 1, 31), 'Assets:Checking') == Decimal(2460)
+    assert j.flow(date(2021, 1, 1), date(2021, 1, 1), 'Assets:Checking') == Decimal(2500)
+    assert j.flow(date(2021, 1, 5), date(2021, 1, 31), 'Assets:Checking') == Decimal(0)
+    assert j.flow(date(2021, 1, 1), date(2021, 1, 31), 'Assets:Savings') == Decimal(15000)
+    assert j.flow(date(2021, 1, 1), date(2021, 1, 31), 'Assets:House') == Decimal(450000)
+    assert j.flow(date(2021, 1, 1), date(2021, 1, 31), 'Assets') == Decimal(467460)
+    with pytest.raises(ValueError):
+        j.flow(date(2021, 1, 31), date(2021, 1, 1), 'Assets:Checking')

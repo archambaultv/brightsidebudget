@@ -4,7 +4,7 @@ import polars as pl
 from datetime import date
 from decimal import Decimal
 from typing import Callable, Union
-from brightsidebudget.account import Account, QName, load_accounts
+from brightsidebudget.account import Account, QName, clean_tags, load_accounts
 from brightsidebudget.bassertion import BAssertion, load_balances
 from brightsidebudget.i18n import AccountHeader, BAssertionHeader, DataframeHeader, \
     TargetHeader, TxnHeader
@@ -287,7 +287,7 @@ class Journal():
         return txns
 
     @classmethod
-    def from_csv(cls, accounts: str, postings: Union[str, list[str]],
+    def from_csv(cls, accounts: str, postings: Union[str, list[str], None] = None,
                  bassertions: Union[str, None] = None,
                  targets: Union[str, None] = None, *,
                  encoding: str = 'utf-8',
@@ -298,6 +298,8 @@ class Journal():
         """
         Loads a journal from CSV files.
         """
+        if postings is None:
+            postings = []
         if isinstance(postings, (str, PosixPath)):
             postings = [postings]
         if txn_header is None:
@@ -325,11 +327,8 @@ class Journal():
                     if stmt_date:
                         stmt_date = date.fromisoformat(stmt_date)
                     d = row.copy()
-                    for x in txn_header:
-                        d.pop(x, None)
-                    for k, v in list(d.items()):
-                        if v is None or v.strip() == '':
-                            d.pop(k)
+                    clean_tags(d, forbidden=txn_header, err_ctx=f'{txn_id}')
+
                     p = Posting(txnid=txn_id, date=dt, acc_qname=acc, amount=amnt,
                                 stmt_desc=stmt_desc, stmt_date=stmt_date, comment=comment,
                                 tags=d)

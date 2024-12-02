@@ -297,3 +297,8 @@ def test_write_balances(accounts_file, bassertions_file, tmp_path):
     with open(tmp_file, 'r') as f:
         header = f.readline()
     assert header == 'Date2,Account2,Balance2,Comment\n'
+
+
+def test_too_many_columns(accounts_too_many_columns):
+    with pytest.raises(ValueError):
+        Journal.from_csv(accounts=accounts_too_many_columns)

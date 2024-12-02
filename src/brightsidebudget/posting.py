@@ -4,7 +4,7 @@ from typing import Union
 from dateutil.relativedelta import relativedelta
 from decimal import Decimal
 from dateutil.rrule import rrule, DAILY, WEEKLY, MONTHLY, YEARLY
-from brightsidebudget.account import QName
+from brightsidebudget.account import QName, clean_tags
 from brightsidebudget.i18n import TargetHeader
 
 
@@ -247,11 +247,9 @@ def load_rpostings(rpostings: str, encoding: str = "utf8",
             if until:
                 until = date.fromisoformat(until)
             d = row.copy()
-            for x in rposting_header:
-                d.pop(x, None)
-            for k, v in list(d.items()):
-                if v is None or v.strip() == '':
-                    d.pop(k)
+            ctx = f"{start} {acc} {amount}"
+            clean_tags(d, forbidden=rposting_header, err_ctx=ctx)
+
             ts.append(RPosting(start=start, acc_qname=acc, amount=amount,
                                comment=comment, frequency=frequency, interval=interval,
                                count=count, until=until, tags=d))

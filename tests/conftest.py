@@ -7,6 +7,11 @@ def accounts_file() -> str:
 
 
 @pytest.fixture()
+def accounts_too_many_columns() -> str:
+    return "tests/fixtures/accounts_too_many_columns.csv"
+
+
+@pytest.fixture()
 def bank_checking_file() -> str:
     return "tests/fixtures/bank_checking.csv"
 

@@ -1,5 +1,5 @@
 import csv
-from typing import Union
+from typing import Any, Union
 from brightsidebudget.i18n import AccountHeader
 
 
@@ -159,10 +159,27 @@ def load_accounts(accounts: str, encoding: str = "utf8",
         for row in reader:
             qname = row[acc_header.account]
             d = row.copy()
-            for x in acc_header:
-                d.pop(x, None)
-            for k, v in list(d.items()):
-                if v is None or v.strip() == '':
-                    d.pop(k)
+            clean_tags(d, forbidden=acc_header, err_ctx=qname)
+
             accs.append(Account(qname=qname, tags=d))
     return accs
+
+
+def clean_tags(tags: dict[str, Any], forbidden: list[str] = None,
+               err_ctx: str = ""):
+    """
+    Remove empty tags from a dictionary.
+    """
+    if forbidden is None:
+        forbidden = []
+
+    for x in forbidden:
+        tags.pop(x, None)
+    for k, v in list(tags.items()):
+        if v is None or (isinstance(v, str) and v.strip() == ""):
+            tags.pop(k)
+        if isinstance(v, list):
+            msg = "Extra columns"
+            if err_ctx:
+                msg = f"{err_ctx}: {msg}"
+            raise ValueError(msg)

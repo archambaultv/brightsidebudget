@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
+## [0.5.14]
+### Fixed
+- Better error reporting when a CSV line has more columns than the header.
+
 ## [0.5.13]
 ### Modified
 - `adjust_for_bassertion` method of `Journal` class now uses the existing

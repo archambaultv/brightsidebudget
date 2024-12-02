@@ -2,7 +2,7 @@ import csv
 from datetime import date
 from decimal import Decimal
 from typing import Union
-from brightsidebudget.account import QName
+from brightsidebudget.account import QName, clean_tags
 from brightsidebudget.i18n import BAssertionHeader
 
 
@@ -60,10 +60,8 @@ def load_balances(balances: str, encoding: str = "utf8",
             acc = row[bassertion_header.account]
             balance = Decimal(row[bassertion_header.balance])
             d = row.copy()
-            for x in bassertion_header:
-                d.pop(x, None)
-            for k, v in list(d.items()):
-                if v is None or v.strip() == '':
-                    d.pop(k)
+            ctx = f"{dt} {acc} {balance}"
+            clean_tags(d, forbidden=bassertion_header, err_ctx=ctx)
+
             bs.append(BAssertion(date=dt, acc_qname=acc, balance=balance, tags=d))
     return bs

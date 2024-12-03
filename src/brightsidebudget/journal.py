@@ -17,10 +17,14 @@ class Journal():
     financial activities of a person or organization. It also contains a list
     of accounts, balance assertions and budget targets.
     """
-    def __init__(self):
+    def __init__(self, *,
+                 enforce_1_n: bool = False,
+                 auto_create_parents: bool = False):
         """
         Creates an empty journal. Use the add_* methods to populate the journal.
         """
+        self.enforce_1_n = enforce_1_n
+        self.auto_create_parents = auto_create_parents
         self.accounts: list[Account] = []
         self.postings: list[Posting] = []
         self.targets: list[RPosting] = []
@@ -41,6 +45,10 @@ class Journal():
 
     def txn(self, txnid: int) -> Txn:
         return self.txns_dict[txnid]
+
+    @property
+    def txns(self) -> list[Txn]:
+        return list(self.txns_dict.values())
 
     def account(self, qname: Union[QName, str]) -> Account:
         """
@@ -136,7 +144,10 @@ class Journal():
             # Check immediate parent exists
             parent = a.qname.parent
             if parent and parent not in self._full_qname_dict:
-                raise ValueError(f'Parent account {parent} does not exist')
+                if self.auto_create_parents:
+                    self.add_accounts([Account(qname=parent)], copy=False)
+                else:
+                    raise ValueError(f'Parent account {parent} does not exist')
 
             self._full_qname_dict[a.qname] = a
             self.accounts.append(a)
@@ -148,6 +159,7 @@ class Journal():
                 self._short_qname_dict[short_name].append(a)
 
     def add_txns(self, txns: Union[Txn, list[Txn]],
+                 *,
                  copy: bool = False,
                  ignore_txnid: bool = True):
         """
@@ -164,6 +176,10 @@ class Journal():
         # Validate postings
         id = self._next_txn_id
         for t in txns:
+            if self.enforce_1_n and not t.is_1_n:
+                msg = f'Txn {t.txnid} must have only one positive or one negative posting'
+                raise ValueError(msg)
+
             for p in t.postings:
                 if ignore_txnid:
                     p.txnid = id
@@ -241,7 +257,7 @@ class Journal():
         for t in targets:
             self.targets.append(t)
 
-    def balance(self, date: date, qname: Union[QName, str],
+    def balance(self, dt: date, qname: Union[QName, str],
                 use_stmt_date: bool = False) -> Decimal:
         """
         Returns the balance of an account at a certain date.
@@ -257,7 +273,7 @@ class Journal():
         balance = Decimal(0)
         full_qname = self.full_qname(qname)
         for p in self.postings:
-            if get_date(p) <= date and p.acc_qname.is_equal_or_descendant_of(full_qname):
+            if get_date(p) <= dt and p.acc_qname.is_equal_or_descendant_of(full_qname):
                 balance += p.amount
 
         return balance
@@ -300,8 +316,11 @@ class Journal():
     @classmethod
     def from_csv(cls, accounts: str, postings: Union[str, list[str], None] = None,
                  bassertions: Union[str, None] = None,
-                 targets: Union[str, None] = None, *,
+                 targets: Union[str, None] = None,
+                 *,
                  encoding: str = 'utf-8',
+                 enforce_1_n: bool = False,
+                 auto_create_parents: bool = False,
                  acc_header: Union[AccountHeader, None] = None,
                  txn_header: Union[TxnHeader, None] = None,
                  bassertion_header: Union[BAssertionHeader, None] = None,
@@ -320,6 +339,8 @@ class Journal():
             return None if x == '' else x
 
         j = cls()
+        j.enforce_1_n = enforce_1_n
+        j.auto_create_parents = auto_create_parents
         accs = load_accounts(accounts, encoding=encoding, acc_header=acc_header)
         j.add_accounts(accs)
 
@@ -395,12 +416,7 @@ class Journal():
         """
         Returns the last balance assertion for the account.
         """
-        if isinstance(qname, str):
-            qname = QName(qname=qname)
-
-        full_qname = self.full_qname(qname)
-        bs = [b for b in self.bassertions if b.acc_qname == full_qname]
-        bs.sort(key=lambda x: x.date)
+        bs = self.account_bassertions(qname)
         if bs:
             return bs[-1]
         else:
@@ -514,7 +530,7 @@ class Journal():
         """
         if ps is None:
             ps = self.postings
-        return list({k for p in ps for k in p.tags.keys()})
+        return sorted({k for p in ps for k in p.tags.keys()})
 
     def all_accounts_tags(self, accs: Union[list[Account], None] = None) -> list[str]:
         """
@@ -523,7 +539,7 @@ class Journal():
         """
         if accs is None:
             accs = self.accounts
-        return list({k for a in accs for k in a.tags.keys()})
+        return sorted({k for a in accs for k in a.tags.keys()})
 
     def all_bassertions_tags(self, bassertions: Union[list[BAssertion], None] = None) -> list[str]:
         """
@@ -531,7 +547,7 @@ class Journal():
         """
         if bassertions is None:
             bassertions = self.bassertions
-        return list({k for b in self.bassertions for k in b.tags.keys()})
+        return sorted({k for b in self.bassertions for k in b.tags.keys()})
 
     def to_polars(self,
                   ps: Union[list[Posting], None] = None,
@@ -730,6 +746,33 @@ class Journal():
                     for k in p_tag_keys:
                         row.append(p.tag(k))
                     writer.writerow(row)
+
+    def write_accounts(self, *,
+                       accounts: Union[list[Account], None] = None,
+                       file: Union[str, PosixPath] = "accounts.csv",
+                       aheader: Union[AccountHeader, None] = None,
+                       encoding="utf8"):
+        """
+        Write the accounts to a CSV file.
+        """
+        if accounts is None:
+            accounts = self.accounts
+        if aheader is None:
+            aheader = AccountHeader()
+
+        accounts = sorted(accounts, key=lambda x: x.qname.qstr)
+
+        with open(file, "w", encoding=encoding) as f:
+            writer = csv.writer(f, lineterminator="\n")
+            header = [aheader.account]
+            a_tag_keys = self.all_accounts_tags(accounts)
+            header += a_tag_keys
+            writer.writerow(header)
+            for a in accounts:
+                row = [a.qname]
+                for k in a_tag_keys:
+                    row.append(a.tag(k))
+                writer.writerow(row)
 
 
 def subset_sum(amounts: list[Decimal], target: Decimal) -> list[int]:

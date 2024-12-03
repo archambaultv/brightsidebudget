@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
+## [0.5.16]
+### Added
+- Add `enforce_1_n` parameter to `Journal` class to enforce that the
+  transactions have only one positive or one negative posting.
+- Add `auto_create_parents` parameter to `Journal` class to automatically create
+  parent accounts when a child account is added.
+- Add `write_accounts` method to `Journal` class to write accounts to a CSV file.
+
 ## [0.5.15]
 ### Added
 - Add `flow` method to `Journal` class to compute the flow of an account.

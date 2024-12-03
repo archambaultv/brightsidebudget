@@ -105,7 +105,7 @@ class BankCsv():
 
 
 def import_bank_csv(journal: Journal, conf: BankCsv,
-                    classifier: Callable[[Posting], Union[Txn, None]],
+                    classifier: Callable[[Posting], Union[Txn, list[Txn], None]],
                     only_after: Union[date, None] = None,) -> list[Txn]:
     """
     Import bank transactions from a CSV file into the journal. Filters out
@@ -114,8 +114,8 @@ def import_bank_csv(journal: Journal, conf: BankCsv,
     If the conf does not use the full qualified name, it will be converted to
     a full qualified name.
 
-    The classifier function should take a Posting object and return a Txn
-    object that represent the transactions to be added to the journal. If the
+    The classifier function should take a Posting object and return a list of Txn
+    objects that represent the transactions to be added to the journal. If the
     Txn object is not accepted, the classifier should return None.
     """
     # Use full qualified name
@@ -153,9 +153,11 @@ def import_bank_csv(journal: Journal, conf: BankCsv,
     # Classify and add txns
     accepted_txns: list[Txn] = []
     for p in new_ps:
-        t = classifier(p)
-        if t:
-            accepted_txns.append(t)
+        ts = classifier(p)
+        if isinstance(ts, Txn):
+            ts = [ts]
+        if ts:
+            accepted_txns.extend(ts)
     journal.add_txns(accepted_txns)
 
     return accepted_txns

@@ -299,6 +299,15 @@ def test_write_balances(accounts_file, bassertions_file, tmp_path):
     assert header == 'Date2,Account2,Balance2,Comment\n'
 
 
+def test_write_accounts(accounts_file, tmp_path):
+    j = Journal.from_csv(accounts=accounts_file, postings=[])
+    tmp_file = tmp_path / 'accounts.csv'
+    j.write_accounts(file=tmp_file)
+    with open(tmp_file, 'r') as f:
+        header = f.readline()
+    assert header == 'Account,Number,Tag 1\n'
+
+
 def test_too_many_columns(accounts_too_many_columns):
     with pytest.raises(ValueError):
         Journal.from_csv(accounts=accounts_too_many_columns)
@@ -314,3 +323,14 @@ def test_flow(accounts_file, txns_file):
     assert j.flow(date(2021, 1, 1), date(2021, 1, 31), 'Assets') == Decimal(467460)
     with pytest.raises(ValueError):
         j.flow(date(2021, 1, 31), date(2021, 1, 1), 'Assets:Checking')
+
+
+def test_auto_create_parent():
+    j = Journal(auto_create_parents=True)
+    j.add_accounts([Account(qname='Assets:Checking')])
+    assert len(j.accounts) == 2
+    j.add_accounts([Account(qname='Assets:Foo')])
+    assert len(j.accounts) == 3
+    j.auto_create_parents = False
+    with pytest.raises(ValueError):
+        j.add_accounts([Account(qname='Test:Bar')])

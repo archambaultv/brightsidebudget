@@ -57,7 +57,7 @@ class Txn():
     A Txn represents a single transaction. It contains a list of Postings that all
     have the same date, same txnid and balance to zero.
     """
-    def __init__(self, postings: list[Posting]):
+    def __init__(self, postings: list[Posting], enforce_1_n: bool = False):
         self.postings = postings
         if not postings:
             raise ValueError('Empty list of postings')
@@ -71,6 +71,9 @@ class Txn():
         s = sum([p.amount for p in self.postings])
         if s != 0:
             raise ValueError(f'Txn {self.txnid} balance is not zero: {s}')
+        if enforce_1_n and not self.is_1_n:
+            msg = f'Txn {self.txnid} must have only one positive or one negative posting'
+            raise ValueError(msg)
 
     def __str__(self):
         return f'Txn {self.date} {self.postings}'
@@ -88,6 +91,40 @@ class Txn():
     @property
     def txnid(self) -> int:
         return self.postings[0].txnid
+
+    @property
+    def is_1_n(self) -> bool:
+        nbPos = [p for p in self.postings if p.amount > 0]
+        nbNeg = [p for p in self.postings if p.amount < 0]
+        if len(nbPos) > 1 and len(nbNeg) > 1:
+            return False
+        return True
+
+    def simplify(self) -> Union['Txn', None]:
+        """
+        Simplify the transaction by removing zero amount postings
+        and merging postings with the same account and same statement date.
+
+        Metadata are discarded.
+        """
+        d_sum: dict[tuple[QName, date], Decimal] = {}
+        for p in self.postings:
+            key = (p.acc_qname, p.stmt_date)
+            if key not in d_sum:
+                d_sum[key] = Decimal(0)
+            d_sum[key] += p.amount
+
+        new_postings = []
+        for (acc, stmt_date), amount in d_sum.items():
+            if amount == 0:
+                continue
+            p = Posting(txnid=self.txnid, date=self.date, acc_qname=acc, amount=amount,
+                        comment=None, stmt_desc=None,
+                        stmt_date=stmt_date, tags=None)
+            new_postings.append(p)
+        if not new_postings:
+            return None
+        return Txn(postings=new_postings, enforce_1_n=self.is_1_n)
 
 
 def txn_from_postings(postings: list[Posting]) -> list[Txn]:

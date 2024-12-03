@@ -24,6 +24,7 @@ def test_txn():
     t = Txn([p1, p2])
     assert t.date == date(2021, 1, 1)
     assert t.txnid == 1
+    assert t.is_1_n is True
 
     with pytest.raises(ValueError):
         Txn([])
@@ -44,6 +45,28 @@ def test_txn():
     p2.date = date(2021, 1, 2)
     with pytest.raises(ValueError):
         Txn([p1, p2])
+
+    p1 = Posting(txnid=1, date=date(2021, 1, 1), acc_qname="A:A1", amount=Decimal("100.00"))
+    p2 = Posting(txnid=1, date=date(2021, 1, 1), acc_qname=QName("E:E1"),
+                 amount=Decimal("-100.00"))
+    p3 = Posting(txnid=1, date=date(2021, 1, 1), acc_qname="A:A2", amount=Decimal(0))
+    t2 = Txn([p1, p2, p3])
+    assert t2.is_1_n is True
+
+    p1 = Posting(txnid=1, date=date(2021, 1, 1), acc_qname="A:A1", amount=Decimal("100.00"))
+    p2 = Posting(txnid=1, date=date(2021, 1, 1), acc_qname=QName("E:E1"),
+                 amount=Decimal("-101.00"))
+    p3 = Posting(txnid=1, date=date(2021, 1, 1), acc_qname="A:A2", amount=Decimal("1"))
+    t2 = Txn([p1, p2, p3])
+    assert t2.is_1_n is True
+
+    p1 = Posting(txnid=1, date=date(2021, 1, 1), acc_qname="A:A1", amount=Decimal("100.00"))
+    p2 = Posting(txnid=1, date=date(2021, 1, 1), acc_qname=QName("E:E1"),
+                 amount=Decimal("-100.00"))
+    p3 = Posting(txnid=1, date=date(2021, 1, 1), acc_qname="A:A2", amount=Decimal("1"))
+    p4 = Posting(txnid=1, date=date(2021, 1, 1), acc_qname="A:A3", amount=Decimal("-1"))
+    t2 = Txn([p1, p2, p3, p4])
+    assert t2.is_1_n is False
 
 
 def test_rposting():

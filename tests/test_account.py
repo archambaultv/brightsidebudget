@@ -41,6 +41,9 @@ def test_qname():
     with pytest.raises(ValueError):
         QName([])
 
+    with pytest.raises(ValueError):
+        QName(["A:B"])
+
 
 def test_account():
     acc = Account(qname="A:B:C")

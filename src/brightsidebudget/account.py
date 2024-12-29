@@ -25,6 +25,8 @@ class QName():
 
         if any([x == "" for x in self._qlist]):
             raise ValueError("Empty element in qname.")
+        if any([":" in x for x in self._qlist]):
+            raise ValueError("Colon in element.")
 
     @property
     def qstr(self) -> str:

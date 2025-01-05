@@ -9,13 +9,7 @@ def test_bassertion():
     assert isinstance(b1.acc_qname, QName)
     assert b1.acc_qname == b2.acc_qname
 
-    # Change name using string
-    b1.acc_qname = "D:E:F"
-    assert b1.acc_qname == QName("D:E:F")
-
     # Tags
-    b1.tags["tag1"] = "value1"
-    assert b1.tag("tag1") == "value1"
     b2 = BAssertion(date=date(2021, 1, 1), acc_qname="A:B:C", balance=Decimal("100.00"),
                     tags={"tag1": "value1"})
-    assert b2.tag("tag1") == "value1"
+    assert b2.tags["tag1"] == "value1"

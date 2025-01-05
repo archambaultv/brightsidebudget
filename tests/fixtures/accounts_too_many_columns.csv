@@ -1,19 +1,19 @@
-Account,Number,Tag 1
-Assets,1000,Actifs
-Assets:Checking,1005,,
-Assets:Savings,1006,
-Assets:House,1200,
-Liabilities,2000,Passifs
-Liabilities:Credit card,2005,
-Liabilities:Long term debt,2050,
-Liabilities:Long term debt:Mortgage,2051,
-Equity,3000,Capitaux propres
-Equity:Opening balance,3005,
-Revenue,4000,Revenus
-Revenue:Salary,4005,
-Expenses,5000,Dépenses
-Expenses:Utilities,5005,
-Expenses:Rent,5006,
-Expenses:Food,5007,
-Expenses:Other,5008,
-Profit and Loss,6000,Résultat
+Compte,Numéro,Tag 1
+Actifs,1000,Actifs
+Actifs:Chèque,1005,,
+Actifs:Épargne,1006,
+Actifs:Maison,1200,
+Passifs,2000,Passifs
+Passifs:Carte de crédit,2005,
+Passifs:Dette à long terme,2050,
+Passifs:Dette à long terme:Hypothèque,2051,
+Capitaux propres,3000,Capitaux propres
+Capitaux propres:Solde d'ouverture,3005,
+Revenus,4000,Revenus
+Revenus:Salaire,4005,
+Dépenses,5000,Dépenses
+Dépenses:Services publics,5005,
+Dépenses:Loyer,5006,
+Dépenses:Nourriture,5007,
+Dépenses:Autres,5008,
+Résultat,6000,Résultat

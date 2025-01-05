@@ -1,6 +1,7 @@
 import csv
-from typing import Any, Union
-from brightsidebudget.i18n import AccountHeader
+from pathlib import PosixPath
+from typing import Callable, Iterable, Union
+from brightsidebudget.tag import all_tags, clean_tags, HasTags
 
 
 class QName():
@@ -8,10 +9,8 @@ class QName():
     QName (qualified name) is a name that uniquely identifies an account. For example,
     "Assets:Checking" is an account that represents a checking account in the
     Assets category.
-
-    They are immutable and hashable.
     """
-    def __init__(self, qname: Union[str, list[str]]):
+    def __init__(self, qname: str | list[str]):
         if isinstance(qname, list):
             if not qname:
                 raise ValueError("Empty qname.")
@@ -38,9 +37,9 @@ class QName():
     @property
     def qlist(self) -> list[str]:
         """
-        The qualified name as a list of name. The list is a new copy.
+        The qualified name as a list of elements.
         """
-        return self._qlist.copy()
+        return self._qlist
 
     @property
     def basename(self) -> str:
@@ -76,13 +75,30 @@ class QName():
             return False
         return self._qlist[:parent.depth] == parent._qlist
 
-    def is_equal_or_descendant_of(self, qname: Union['QName', str]) -> bool:
+    def is_parent_of(self, qname: Union['QName', str]) -> bool:
         """
-        Returns True if this QName is the qname or a descendant.
+        Returns True if this QName is a parent of the given QName.
         """
         if isinstance(qname, str):
             qname = QName(qname)
-        return self == qname or self.is_descendant_of(qname)
+        return qname.is_descendant_of(self)
+
+    @property
+    def sort_key(self) -> tuple[int, str]:
+        """
+        Returns a tuple that can be used for sorting.
+        Ensures that the parent comes before the children and that the five
+        top accounts come in the proper order. (Actifs, Passifs, Capitaux propres, Revenus,
+        Dépenses)
+        """
+        order = {
+            "Actifs": 1,
+            "Passifs": 2,
+            "Capitaux propres": 3,
+            "Revenus": 4,
+            "Dépenses": 5
+        }
+        return tuple([order.get(self._qlist[0], 6), self._qname])
 
     def __eq__(self, other) -> bool:
         if isinstance(other, QName):
@@ -104,84 +120,184 @@ class QName():
         return self.__str__()
 
 
-class Account():
+class Account(HasTags):
     """
     An Account represents a single financial entity where transactions occur. It
     is basically a QName with optional tags.
     """
-    def __init__(self, *, qname: Union[QName, str],
-                 tags: Union[dict[str, str], None] = None):
+    def __init__(self, *, qname: QName | str, tags: dict[str, str] | None = None):
+        super().__init__(tags)
         if isinstance(qname, str):
             qname = QName(qname)
-        self._qname = qname
-        self._tags = tags or {}
-
-    @property
-    def qname(self) -> QName:
-        """
-        The qualified name of the account.
-        """
-        return self._qname
-
-    @qname.setter
-    def qname(self, value: Union[QName, str]):
-        if isinstance(value, str):
-            value = QName(value)
-        self._qname = value
-
-    @property
-    def tags(self) -> dict[str, str]:
-        return self._tags
-
-    def copy(self) -> 'Account':
-        return Account(qname=self._qname, tags=self._tags.copy())
-
-    def tag(self, key: str) -> Union[str, None]:
-        return self._tags.get(key, None)
+        self.qname = qname
 
     def __str__(self):
-        return str(self._qname)
+        return str(self.qname)
 
     def __repr__(self):
         return self.__str__()
 
+    def copy(self):
+        return Account(qname=self.qname, tags=self.tags.copy())
 
-def load_accounts(accounts: str, encoding: str = "utf8",
-                  acc_header: Union[AccountHeader, None] = None) -> list[Account]:
+
+def load_accounts(accounts: str, encoding: str = "utf8") -> list['Account']:
     """
     Load accounts from a CSV file. The file must have a header with the account name
     and optional tags. The account name is the qualified name of the account. The
     tags are optional and are key-value pairs.
     """
-    if acc_header is None:
-        acc_header = AccountHeader()
     accs = []
     with open(accounts, 'r', encoding=encoding) as f:
         reader = csv.DictReader(f)
         for row in reader:
-            qname = row[acc_header.account]
+            qname = row["Compte"]
             d = row.copy()
-            clean_tags(d, forbidden=acc_header, err_ctx=qname)
+            clean_tags(d, forbidden=["Compte"], err_ctx=qname)
 
             accs.append(Account(qname=qname, tags=d))
     return accs
 
 
-def clean_tags(tags: dict[str, Any], forbidden: list[str] = None,
-               err_ctx: str = ""):
+def write_accounts(*,
+                   accounts: Iterable[Account],
+                   file: str | PosixPath,
+                   encoding="utf8"):
     """
-    Remove empty tags from a dictionary.
+    Write the accounts to a CSV file.
     """
-    if forbidden is None:
-        forbidden = []
+    accounts = sorted(accounts, key=lambda x: x.qname.qstr)
 
-    for x in forbidden:
-        tags.pop(x, None)
-    for k, v in list(tags.items()):
-        if v is None or (isinstance(v, str) and v.strip() == ""):
-            tags.pop(k)
-        if isinstance(v, list):
-            msg = "Extra columns"
-            if err_ctx:
-                msg = f"{err_ctx}: {msg}"
-            raise ValueError(msg)
+    with open(file, "w", encoding=encoding) as f:
+        writer = csv.writer(f, lineterminator="\n")
+        header = ["Compte"]
+        a_tag_keys = all_tags(accounts)
+        header += a_tag_keys
+        writer.writerow(header)
+        for a in accounts:
+            row = [a.qname]
+            for k in a_tag_keys:
+                row.append(a.tags.get(k, ""))
+            writer.writerow(row)
+
+
+class ChartOfAccounts:
+    def __init__(self):
+        # _full_qname_dict: A dictionary that maps a full qualified name to an
+        # account
+        self._full_qname_dict: dict[QName, Account] = {}
+        # _short_qname_dict: A dictionary that maps a short qualified name to a
+        # list of matching accounts
+        self._short_qname_dict: dict[QName, list[Account]] = {}
+        self.short_qname_min_length: Callable[[QName], int] = lambda x: 1
+
+    @property
+    def accounts(self) -> Iterable[Account]:
+        """
+        Returns a list of all accounts in the chart of accounts.
+        """
+        return iter(self._full_qname_dict.values())
+
+    def account(self, qname: QName | str) -> Account:
+        """
+        Returns the account with the given qualified name.
+
+        The qualified name can be shortened if it is unique. For example,
+        'Assets:Short-term:Checking' can be shortened to 'Checking', provided
+        that there is no other account with the same short name.
+
+        In the case that a full qualified name is also the short name of another
+        account, the account corresponding to the full qualified name is
+        returned. For example, if there are two accounts 'Assets:Foo:Checking'
+        and 'Foo:Checking', then account('Foo:Checking') will return
+        'Foo:Checking' and not 'Assets:Foo:Checking'.
+        """
+        if isinstance(qname, str):
+            qname = QName(qname=qname)
+
+        if qname in self._full_qname_dict:
+            return self._full_qname_dict[qname]
+        elif qname in self._short_qname_dict:
+            ls = self._short_qname_dict[qname]
+            if len(ls) == 1:
+                return ls[0]
+            raise ValueError(f'Account {qname} is ambiguous')
+        else:
+            raise ValueError(f'Account {qname} does not exist')
+
+    def is_valid_qname(self, qname: QName | str) -> bool:
+        """
+        Returns True if the qualified name uniquely identifies a single account.
+        """
+        if isinstance(qname, str):
+            qname = QName(qname=qname)
+
+        if qname in self._full_qname_dict:
+            return True
+        elif qname in self._short_qname_dict:
+            return len(self._short_qname_dict[qname]) == 1
+        else:
+            return False
+
+    def short_qname(self, qname: QName | str) -> QName:
+        """
+        Returns the shortest qualified name that uniquely identifies the
+        account. The qname must be a valid qualified name.
+        """
+
+        # We try all possible short names starting from shortest to longest
+        acc = self.account(qname)
+        qlist = acc.qname._qlist
+        min_length = min(max(self.short_qname_min_length(acc.qname), 1), len(qlist))
+        for i in range(min_length, len(qlist)):
+            short_name = QName(qlist[-i:])
+            if short_name in self._full_qname_dict:
+                continue
+            if len(self._short_qname_dict[short_name]) == 1:
+                return short_name
+        # No short name found
+        return acc.qname
+
+    def full_qname(self, qname: QName | str) -> QName:
+        """
+        Returns the full qualified name of an account.
+        """
+        return self.account(qname).qname
+
+    def is_leaf_account(self, qname: QName | str) -> bool:
+        """
+        Returns True if the account is a leaf account.
+        """
+        full_qname = self.full_qname(qname)
+        for a in self._full_qname_dict.values():
+            if a.qname.is_descendant_of(full_qname):
+                return False
+        return True
+
+    def add_accounts(self, accounts: list[Account]):
+        """
+        Adds a list of accounts to the journal.
+        Verifies that the accounts do not already exist and that the immediate
+        parent of each account exists.
+        """
+        for a in accounts:
+            if a.qname in self._full_qname_dict:
+                raise ValueError(f'Account {a.qname} already exists')
+            # Check immediate parent exists
+            parent = a.qname.parent
+            if parent and parent not in self._full_qname_dict:
+                raise ValueError(f'Parent account {parent} does not exist')
+
+            self._full_qname_dict[a.qname] = a
+            qlist = a.qname._qlist
+            for idx in range(1, len(qlist)):
+                short_name = QName(qlist[-idx:])
+                if short_name not in self._short_qname_dict:
+                    self._short_qname_dict[short_name] = []
+                self._short_qname_dict[short_name].append(a)
+
+    def max_depth(self) -> int:
+        """
+        Returns the maximum depth of the qualified names in the chart of accounts.
+        """
+        return max((a.qname.depth for a in self._full_qname_dict.values()), default=0)

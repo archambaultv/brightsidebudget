@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
+## [0.6.0]
+### Changed
+- Rewrote the codebase.
+
+### Removed
+- Polars dependency.
+- Support for Python 3.9 to 3.12.
+- Remove support for i18n, everything is now in French.
+
 ## [0.5.17]
 ### Added
 - Nox tests for python 3.13

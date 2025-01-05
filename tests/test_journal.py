@@ -1,9 +1,10 @@
 from datetime import date
 from decimal import Decimal
 
+from brightsidebudget.account import QName
+from brightsidebudget.tag import all_tags
 import pytest
-from brightsidebudget import Journal, BAssertion, Account, AccountHeader, TxnHeader, \
-    BAssertionHeader, TargetHeader
+from brightsidebudget import Journal, BAssertion, Account
 
 
 def test_from_csv(accounts_file, txns_file, bassertions_file, budget_file):
@@ -13,23 +14,24 @@ def test_from_csv(accounts_file, txns_file, bassertions_file, budget_file):
 
 
 def verify_from_csv(j: Journal):
-    assert len(j.accounts) == 18
-    assert len(j.postings) == 8
-    assert len(j.bassertions) == 6
-    assert len(j.targets) == 4
-    a = j.account('Assets:Checking')
+    assert len(list(j.chartOfAccounts.accounts)) == 18
+    assert len(list(j.postings)) == 8
+    assert len(j.bassertions_dict) == 6
+    assert len(j.budget.rpostings) == 4
+    a = j.chartOfAccounts.account('Actifs:Chèque')
     assert "Tag 1" not in a.tags
-    a2 = j.account('Assets')
+    a2 = j.chartOfAccounts.account('Actifs')
     assert "Tag 1" in a2.tags
     assert len(j.txns_dict) == 2
     txn2 = j.txns_dict[2]
     assert txn2.postings[0].stmt_desc == 'Super market'
-    for a in j.accounts:
+    for a in j.chartOfAccounts.accounts:
         assert len(a.tags) in [1, 2]
-    b_tags = j.all_bassertions_tags()
-    assert b_tags == ["Comment"]
-    assert j.bassertions[4].tag("Comment") == "It is a nice house"
-    assert j.bassertions[0].tag("Comment") is None
+    b_tags = all_tags(j.bassertions)
+    assert b_tags == ["Commentaire"]
+    assert ((j.bassertions_dict[QName("Actifs:Maison")][date(2021, 1, 1)]).tags("Commentaire") ==
+            "It is a nice Maison")
+    assert j.bassertions_dict[QName("Actifs:Chèque")][date(2021, 1, 1)].tags("Commentaire") is None
 
 
 def test_from_csv_i18n(accounts_file, txns_file, bassertions_file, budget_file,
@@ -66,18 +68,8 @@ def test_from_csv_i18n(accounts_file, txns_file, bassertions_file, budget_file,
     with open(budget_file, 'w') as f:
         f.write(content)
 
-    acc_header = AccountHeader(account='Compte')
-    txn_header = TxnHeader(account='Compte', date='Date2', amount='Montant', txn='Txn2',
-                           stmt_desc='Description du relevé')
-    bassertion_header = BAssertionHeader(account='Compte', date='Date2', balance='Solde')
-    target_header = TargetHeader(account='Compte', start_date='Début', amount='Montant',
-                                 comment='Commentaire', frequency='Fréquence',
-                                 interval='Intervalle',
-                                 count='Compter', until='Fin')
     j = Journal.from_csv(accounts=accounts_file, postings=txns_file,
-                         bassertions=bassertions_file, targets=budget_file,
-                         acc_header=acc_header, txn_header=txn_header,
-                         bassertion_header=bassertion_header, target_header=target_header)
+                         bassertions=bassertions_file, targets=budget_file)
     verify_from_csv(j)
 
 
@@ -100,32 +92,32 @@ def test_next_txn_id(accounts_file, txns_file):
 
 def test_balance(accounts_file, txns_file):
     j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
-    assert j.balance(date(2021, 1, 2), 'Assets:Checking') == Decimal(2460)
-    assert j.balance(date(2021, 1, 2), 'Assets:Savings') == Decimal(15000)
-    assert j.balance(date(2021, 1, 2), 'Assets:House') == Decimal(450000)
-    assert j.balance(date(2021, 1, 2), 'Assets') == Decimal(467460)
+    assert j.balance(date(2021, 1, 2), 'Actifs:Chèque') == Decimal(2460)
+    assert j.balance(date(2021, 1, 2), 'Actifs:Épargne') == Decimal(15000)
+    assert j.balance(date(2021, 1, 2), 'Actifs:Maison') == Decimal(450000)
+    assert j.balance(date(2021, 1, 2), 'Actifs') == Decimal(467460)
 
 
 def test_adjust_for_bassertions(accounts_file, txns_file):
     j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
-    b = BAssertion(date=date(2021, 1, 3), acc_qname='Checking', balance=Decimal(4460))
+    b = BAssertion(date=date(2021, 1, 3), acc_qname='Chèque', balance=Decimal(4460))
     j.add_bassertions(b)
-    t = j.adjust_for_bassertions(accounts=['Checking'], counterparts=['Salary'],
+    t = j.adjust_for_bassertions(accounts=['Chèque'], counterparts=['Salaire'],
                                  children=None,
                                  comment='Adjustment for bassertion')
     assert t[0].txnid == 3
     assert t[0].date == date(2021, 1, 3)
-    assert t[0].postings[0].acc_qname.qstr == 'Assets:Checking'
+    assert t[0].postings[0].acc_qname.qstr == 'Actifs:Chèque'
     assert t[0].postings[0].amount == Decimal(2000)
     assert t[0].postings[0].comment == 'Adjustment for bassertion'
-    assert t[0].postings[1].acc_qname.qstr == 'Revenue:Salary'
+    assert t[0].postings[1].acc_qname.qstr == 'Revenus:Salaire'
     assert t[0].postings[1].amount == Decimal(-2000)
     assert t[0].postings[1].comment == 'Adjustment for bassertion'
     assert len(j.postings) == 10
 
-    b = BAssertion(date=date(2021, 1, 2), acc_qname='Checking', balance=Decimal(4458))
+    b = BAssertion(date=date(2021, 1, 2), acc_qname='Chèque', balance=Decimal(4458))
     j.add_bassertions(b)
-    t = j.adjust_for_bassertions(accounts=['Checking'], counterparts=['Salary'],
+    t = j.adjust_for_bassertions(accounts=['Chèque'], counterparts=['Salaire'],
                                  comment='Adjustment for bassertion')
     assert len(t) == 2
     assert len(j.failed_bassertions(today=date(2021, 1, 30))) == 0
@@ -133,137 +125,111 @@ def test_adjust_for_bassertions(accounts_file, txns_file):
 
 def test_adjust_for_bassertion_child(accounts_file, txns_file):
     j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
-    b = BAssertion(date=date(2021, 1, 3), acc_qname='Assets', balance=Decimal(467461))
+    b = BAssertion(date=date(2021, 1, 3), acc_qname='Actifs', balance=Decimal(467461))
     j.add_bassertions(b)
-    t = j.adjust_for_bassertions(accounts=['Assets'], counterparts=['Salary'],
-                                 children=['Checking'],
+    t = j.adjust_for_bassertions(accounts=['Actifs'], counterparts=['Salaire'],
+                                 children=['Chèque'],
                                  comment='Adjustment for bassertion')
 
     assert t[0].txnid == 3
     assert t[0].date == date(2021, 1, 3)
-    assert t[0].postings[0].acc_qname.qstr == 'Assets:Checking'
+    assert t[0].postings[0].acc_qname.qstr == 'Actifs:Chèque'
     assert t[0].postings[0].amount == Decimal(1)
     assert t[0].postings[0].comment == 'Adjustment for bassertion'
-    assert t[0].postings[1].acc_qname.qstr == 'Revenue:Salary'
+    assert t[0].postings[1].acc_qname.qstr == 'Revenus:Salaire'
     assert t[0].postings[1].amount == Decimal(-1)
     assert t[0].postings[1].comment == 'Adjustment for bassertion'
-    assert len(j.postings) == 10
+    assert len(list(j.postings)) == 10
 
 
 def test_short_qnames_1(accounts_file, txns_file):
     j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
-    assert j.short_qname('Assets:Checking').qstr == 'Checking'
-    assert j.short_qname('Checking').qstr == 'Checking'
-    assert j.short_qname('Assets').qstr == 'Assets'
-    assert j.short_qname('Expenses:Other').qstr == 'Other'
-    assert j.short_qname('Expenses:Food').qstr == 'Food'
+    assert j.chartOfAccounts.short_qname('Actifs:Chèque').qstr == 'Chèque'
+    assert j.chartOfAccounts.short_qname('Chèque').qstr == 'Chèque'
+    assert j.chartOfAccounts.short_qname('Actifs').qstr == 'Actifs'
+    assert j.chartOfAccounts.short_qname('Dépenses:Autres').qstr == 'Autres'
+    assert j.chartOfAccounts.short_qname('Dépenses:Nourriture').qstr == 'Nourriture'
 
-    assert j.short_qname('Assets:Checking', min_length=2).qstr == 'Assets:Checking'
-    assert j.short_qname('Checking', min_length=2).qstr == 'Assets:Checking'
-    assert j.short_qname('Assets', min_length=2).qstr == 'Assets'
+    j.chartOfAccounts.short_qname = lambda x: 2 if x in ['Actifs:Chèque', 2] else 1
+    assert j.chartOfAccounts.short_qname('Actifs:Chèque').qstr == 'Actifs:Chèque'
+    assert j.chartOfAccounts.short_qname('Chèque').qstr == 'Actifs:Chèque'
+    assert j.chartOfAccounts.short_qname('Actifs').qstr == 'Actifs'
 
 
 def test_empty_journal():
     j = Journal()
-    assert len(j.accounts) == 0
-    assert len(j.postings) == 0
-    assert len(j.bassertions) == 0
+    assert len(list(j.chartOfAccounts.accounts)) == 0
+    assert len(list(j.postings)) == 0
+    assert len(j.bassertions_dict) == 0
 
 
 def test_no_txns(accounts_file):
     j = Journal.from_csv(accounts=accounts_file, postings=[])
-    assert len(j.accounts) == 18
-    assert len(j.postings) == 0
-    assert len(j.bassertions) == 0
+    assert len(list(j.chartOfAccounts.accounts)) == 18
+    assert len(list(j.postings)) == 0
+    assert len(j.bassertions_dict) == 0
 
 
 def test_no_bassertions(accounts_file, txns_file):
     j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
-    assert len(j.accounts) == 18
-    assert len(j.postings) == 8
-    assert len(j.bassertions) == 0
-
-
-def test_to_polars(accounts_file, txns_file):
-    j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
-    df = j.to_polars()
-
-    assert len(df) == 8
-    expected_cols = ['Txn', 'Date', 'Account',  'Account short name',
-                     'Account 1', 'Account 2', 'Account 3', 'Amount', 'Comment',
-                     'Stmt date', 'Stmt description', 'Number', 'Tag 1']
-    assert len(df.columns) == len(expected_cols)
-    for x in expected_cols:
-        assert x in df.columns
-
-
-def test_conflicting_tags(accounts_file, txns_file):
-    j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
-    ps = []
-    for p in j.postings:
-        p.tags['Tag 1'] = 'Conflict'
-        p.tags['Tag 1_acc'] = 'Conflict again'
-        ps.append(p)
-    df = j.to_polars(ps)
-
-    assert df['Tag 1'].unique().to_list() == ['Conflict']
-    assert df['Tag 1_acc'].unique().to_list() == ['Conflict again']
-    assert "Tag 1_acc2" in df.columns
+    assert len(list(j.chartOfAccounts.accounts)) == 18
+    assert len(list(j.postings)) == 8
+    assert len(j.bassertions_dict) == 0
 
 
 def test_short_qnames_2():
     j = Journal()
-    j.add_accounts([Account(qname='Assets'),
-                    Account(qname='Assets:Checking'),
-                    Account(qname='Assets:Checking:Foo'),
-                    Account(qname='Assets:Savings'),
-                    Account(qname='Assets:Savings:Foo')])
-    assert j.short_qname('Assets:Checking:Foo').qstr == 'Checking:Foo'
-    assert j.short_qname('Checking:Foo').qstr == 'Checking:Foo'
-    assert j.short_qname('Assets:Savings:Foo').qstr == 'Savings:Foo'
-    assert j.short_qname('Savings:Foo').qstr == 'Savings:Foo'
+    j.add_accounts([Account(qname='Actifs'),
+                    Account(qname='Actifs:Chèque'),
+                    Account(qname='Actifs:Chèque:Foo'),
+                    Account(qname='Actifs:Épargne'),
+                    Account(qname='Actifs:Épargne:Foo')])
+    assert j.chartOfAccounts.short_qname('Actifs:Chèque:Foo').qstr == 'Chèque:Foo'
+    assert j.chartOfAccounts.short_qname('Chèque:Foo').qstr == 'Chèque:Foo'
+    assert j.chartOfAccounts.short_qname('Actifs:Épargne:Foo').qstr == 'Épargne:Foo'
+    assert j.chartOfAccounts.short_qname('Épargne:Foo').qstr == 'Épargne:Foo'
 
     with pytest.raises(ValueError):
-        j.short_qname('Foo')
+        j.chartOfAccounts.short_qname('Foo')
 
     # A previous bug appeared only when there was an uneven number of the same
     # account basenames.
-    j.add_accounts([Account(qname='Assets:House'),
-                    Account(qname='Assets:House:Foo')])
+    j.add_accounts([Account(qname='Actifs:Maison'),
+                    Account(qname='Actifs:Maison:Foo')])
 
-    assert j.short_qname('Assets:Checking:Foo').qstr == 'Checking:Foo'
-    assert j.short_qname('Checking:Foo').qstr == 'Checking:Foo'
-    assert j.short_qname('Assets:Savings:Foo').qstr == 'Savings:Foo'
-    assert j.short_qname('Savings:Foo').qstr == 'Savings:Foo'
-    assert j.short_qname('Assets:House:Foo').qstr == 'House:Foo'
-    assert j.short_qname('House:Foo').qstr == 'House:Foo'
+    assert j.chartOfAccounts.short_qname('Actifs:Chèque:Foo').qstr == 'Chèque:Foo'
+    assert j.chartOfAccounts.short_qname('Chèque:Foo').qstr == 'Chèque:Foo'
+    assert j.chartOfAccounts.short_qname('Actifs:Épargne:Foo').qstr == 'Épargne:Foo'
+    assert j.chartOfAccounts.short_qname('Épargne:Foo').qstr == 'Épargne:Foo'
+    assert j.chartOfAccounts.short_qname('Actifs:Maison:Foo').qstr == 'Maison:Foo'
+    assert j.chartOfAccounts.short_qname('Maison:Foo').qstr == 'Maison:Foo'
 
     with pytest.raises(ValueError):
-        j.short_qname('Foo')
+        j.chartOfAccounts.short_qname('Foo')
 
-    # Now Checking:Foo hides Assets:Checking:Foo
-    j.add_accounts([Account(qname='Checking'),
-                    Account(qname='Checking:Foo')])
+    # Now Chèque:Foo hides Actifs:Chèque:Foo
+    j.add_accounts([Account(qname='Chèque'),
+                    Account(qname='Chèque:Foo')])
 
-    assert j.short_qname('Assets:Checking:Foo').qstr == 'Assets:Checking:Foo'
-    assert j.short_qname('Checking:Foo').qstr == 'Checking:Foo'
-    assert j.full_qname('Checking:Foo').qstr == 'Checking:Foo'
-    assert j.account('Checking:Foo').qname.qstr == 'Checking:Foo'
+    assert j.chartOfAccounts.short_qname('Actifs:Chèque:Foo').qstr == 'Actifs:Chèque:Foo'
+    assert j.chartOfAccounts.short_qname('Chèque:Foo').qstr == 'Chèque:Foo'
+    assert j.chartOfAccounts.full_qname('Chèque:Foo').qstr == 'Chèque:Foo'
+    assert j.chartOfAccounts.account('Chèque:Foo').qname.qstr == 'Chèque:Foo'
 
 
 def test_duplicate_balance():
     j = Journal()
-    j.add_accounts([Account(qname='Assets')])
-    j.add_bassertions([BAssertion(date=date(2021, 1, 1), acc_qname='Assets', balance=Decimal(100))])
+    j.add_accounts([Account(qname='Actifs')])
+    j.add_bassertions([BAssertion(date=date(2021, 1, 1), acc_qname='Actifs', balance=Decimal(100))])
     with pytest.raises(ValueError):
-        j.add_bassertions([BAssertion(date=date(2021, 1, 1), acc_qname='Assets',
+        j.add_bassertions([BAssertion(date=date(2021, 1, 1), acc_qname='Actifs',
                                       balance=Decimal(100))])
 
-    j.add_accounts([Account(qname='Assets:Checking')])
-    j.add_bassertions([BAssertion(date=date(2021, 1, 1), acc_qname='Assets:Checking',
+    j.add_accounts([Account(qname='Actifs:Chèque')])
+    j.add_bassertions([BAssertion(date=date(2021, 1, 1), acc_qname='Actifs:Chèque',
                                   balance=Decimal(100))])
     with pytest.raises(ValueError):
-        j.add_bassertions([BAssertion(date=date(2021, 1, 1), acc_qname='Checking',
+        j.add_bassertions([BAssertion(date=date(2021, 1, 1), acc_qname='Chèque',
                                       balance=Decimal(100))])
 
 
@@ -273,12 +239,9 @@ def test_write_txns(accounts_file, txns_file, tmp_path):
     j.write_txns(filefunc=tmp_file)
     with open(tmp_file, 'r') as f:
         header = f.readline()
-    assert header == 'Txn,Date,Account,Amount,Statement date,Comment,Statement description\n'
+    assert header == 'No txn,Date,Compte,Montant,Date du relevé,Commentaire,Description du relevé\n'
 
-    txnheader = TxnHeader(account='Account2', date='Date2', amount='Amount2', txn='Txn2',
-                          stmt_date='Statement date2', comment='Comment2',
-                          stmt_desc='Statement description2')
-    j.write_txns(filefunc=tmp_file, txn_header=txnheader)
+    j.write_txns(filefunc=tmp_file)
     with open(tmp_file, 'r') as f:
         header = f.readline()
     assert header == 'Txn2,Date2,Account2,Amount2,Statement date2,Comment2,Statement description2\n'
@@ -292,8 +255,7 @@ def test_write_balances(accounts_file, bassertions_file, tmp_path):
         header = f.readline()
     assert header == 'Date,Account,Balance,Comment\n'
 
-    bheader = BAssertionHeader(account='Account2', date='Date2', balance='Balance2')
-    j.write_bassertions(file=tmp_file, bheader=bheader)
+    j.write_bassertions(file=tmp_file)
     with open(tmp_file, 'r') as f:
         header = f.readline()
     assert header == 'Date2,Account2,Balance2,Comment\n'
@@ -315,22 +277,22 @@ def test_too_many_columns(accounts_too_many_columns):
 
 def test_flow(accounts_file, txns_file):
     j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
-    assert j.flow(date(2021, 1, 1), date(2021, 1, 31), 'Assets:Checking') == Decimal(2460)
-    assert j.flow(date(2021, 1, 1), date(2021, 1, 1), 'Assets:Checking') == Decimal(2500)
-    assert j.flow(date(2021, 1, 5), date(2021, 1, 31), 'Assets:Checking') == Decimal(0)
-    assert j.flow(date(2021, 1, 1), date(2021, 1, 31), 'Assets:Savings') == Decimal(15000)
-    assert j.flow(date(2021, 1, 1), date(2021, 1, 31), 'Assets:House') == Decimal(450000)
-    assert j.flow(date(2021, 1, 1), date(2021, 1, 31), 'Assets') == Decimal(467460)
+    assert j.flow(date(2021, 1, 1), date(2021, 1, 31), 'Actifs:Chèque') == Decimal(2460)
+    assert j.flow(date(2021, 1, 1), date(2021, 1, 1), 'Actifs:Chèque') == Decimal(2500)
+    assert j.flow(date(2021, 1, 5), date(2021, 1, 31), 'Actifs:Chèque') == Decimal(0)
+    assert j.flow(date(2021, 1, 1), date(2021, 1, 31), 'Actifs:Épargne') == Decimal(15000)
+    assert j.flow(date(2021, 1, 1), date(2021, 1, 31), 'Actifs:Maison') == Decimal(450000)
+    assert j.flow(date(2021, 1, 1), date(2021, 1, 31), 'Actifs') == Decimal(467460)
     with pytest.raises(ValueError):
-        j.flow(date(2021, 1, 31), date(2021, 1, 1), 'Assets:Checking')
+        j.flow(date(2021, 1, 31), date(2021, 1, 1), 'Actifs:Chèque')
 
 
 def test_auto_create_parent():
     j = Journal(auto_create_parents=True)
-    j.add_accounts([Account(qname='Assets:Checking')])
-    assert len(j.accounts) == 2
-    j.add_accounts([Account(qname='Assets:Foo')])
-    assert len(j.accounts) == 3
+    j.add_accounts([Account(qname='Actifs:Chèque')])
+    assert len(list(j.chartOfAccounts.accounts)) == 2
+    j.add_accounts([Account(qname='Actifs:Foo')])
+    assert len(list(j.chartOfAccounts.accounts)) == 3
     j.auto_create_parents = False
     with pytest.raises(ValueError):
         j.add_accounts([Account(qname='Test:Bar')])

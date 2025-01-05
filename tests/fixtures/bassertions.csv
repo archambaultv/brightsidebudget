@@ -1,7 +1,7 @@
-Date,Account,Balance,Comment
-2021-01-01,Checking,2500
-2021-01-01,Savings,15000
-2021-01-01,Credit card,-1500
-2021-01-01,Mortgage,-300000
-2021-01-01,House,450000,It is a nice house
-2021-01-01,Opening balance,-166000
+Date,Compte,Solde,Commentaire
+2021-01-01,Chèque,2500
+2021-01-01,Épargne,15000
+2021-01-01,Carte de crédit,-1500
+2021-01-01,Hypothèque,-300000
+2021-01-01,Maison,450000,It is a nice house
+2021-01-01,Solde d'ouverture,-166000

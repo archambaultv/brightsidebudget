@@ -1,8 +1,7 @@
 from datetime import date
 from decimal import Decimal
 import pytest
-from brightsidebudget import Posting, QName, Txn
-from brightsidebudget.posting import RPosting
+from brightsidebudget import Posting, QName, Txn, RPosting
 
 
 def test_posting():

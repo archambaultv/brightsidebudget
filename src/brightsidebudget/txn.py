@@ -150,7 +150,7 @@ def write_txns(*,
     for file, ps in file_dict.items():
         with open(file, "w", encoding=encoding) as f:
             writer = csv.writer(f, lineterminator="\n")
-            header = ["txn", "Date", "Compte", "Montant", "Date du relevé", "Commentaire",
+            header = ["No txn", "Date", "Compte", "Montant", "Date du relevé", "Commentaire",
                       "Description du relevé"]
             p_tag_keys = all_tags(ps)
             header += p_tag_keys

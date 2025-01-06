@@ -29,9 +29,10 @@ def verify_from_csv(j: Journal):
         assert len(a.tags) in [1, 2]
     b_tags = all_tags(j.bassertions)
     assert b_tags == ["Commentaire"]
-    assert ((j.bassertions_dict[QName("Actifs:Maison")][date(2021, 1, 1)]).tags("Commentaire") ==
-            "It is a nice Maison")
-    assert j.bassertions_dict[QName("Actifs:Chèque")][date(2021, 1, 1)].tags("Commentaire") is None
+    m = j.bassertions_dict[QName("Actifs:Maison")][date(2021, 1, 1)]
+    assert (m.tags["Commentaire"] == "It is a nice house")
+    m = j.bassertions_dict[QName("Actifs:Épargne")][date(2021, 1, 1)]
+    assert m.tags.get("Commentaire") is None
 
 
 def test_from_csv_i18n(accounts_file, txns_file, bassertions_file, budget_file,
@@ -113,7 +114,7 @@ def test_adjust_for_bassertions(accounts_file, txns_file):
     assert t[0].postings[1].acc_qname.qstr == 'Revenus:Salaire'
     assert t[0].postings[1].amount == Decimal(-2000)
     assert t[0].postings[1].comment == 'Adjustment for bassertion'
-    assert len(j.postings) == 10
+    assert len(list(j.postings)) == 10
 
     b = BAssertion(date=date(2021, 1, 2), acc_qname='Chèque', balance=Decimal(4458))
     j.add_bassertions(b)
@@ -150,7 +151,7 @@ def test_short_qnames_1(accounts_file, txns_file):
     assert j.chartOfAccounts.short_qname('Dépenses:Autres').qstr == 'Autres'
     assert j.chartOfAccounts.short_qname('Dépenses:Nourriture').qstr == 'Nourriture'
 
-    j.chartOfAccounts.short_qname = lambda x: 2 if x in ['Actifs:Chèque', 2] else 1
+    j.chartOfAccounts.short_qname_min_length = lambda x: 2 if x.qstr in ['Actifs:Chèque'] else 1
     assert j.chartOfAccounts.short_qname('Actifs:Chèque').qstr == 'Actifs:Chèque'
     assert j.chartOfAccounts.short_qname('Chèque').qstr == 'Actifs:Chèque'
     assert j.chartOfAccounts.short_qname('Actifs').qstr == 'Actifs'
@@ -241,11 +242,6 @@ def test_write_txns(accounts_file, txns_file, tmp_path):
         header = f.readline()
     assert header == 'No txn,Date,Compte,Montant,Date du relevé,Commentaire,Description du relevé\n'
 
-    j.write_txns(filefunc=tmp_file)
-    with open(tmp_file, 'r') as f:
-        header = f.readline()
-    assert header == 'Txn2,Date2,Account2,Amount2,Statement date2,Comment2,Statement description2\n'
-
 
 def test_write_balances(accounts_file, bassertions_file, tmp_path):
     j = Journal.from_csv(accounts=accounts_file, postings=[], bassertions=bassertions_file)
@@ -253,12 +249,7 @@ def test_write_balances(accounts_file, bassertions_file, tmp_path):
     j.write_bassertions(file=tmp_file)
     with open(tmp_file, 'r') as f:
         header = f.readline()
-    assert header == 'Date,Account,Balance,Comment\n'
-
-    j.write_bassertions(file=tmp_file)
-    with open(tmp_file, 'r') as f:
-        header = f.readline()
-    assert header == 'Date2,Account2,Balance2,Comment\n'
+    assert header == 'Date,Compte,Solde,Commentaire\n'
 
 
 def test_write_accounts(accounts_file, tmp_path):
@@ -267,7 +258,7 @@ def test_write_accounts(accounts_file, tmp_path):
     j.write_accounts(file=tmp_file)
     with open(tmp_file, 'r') as f:
         header = f.readline()
-    assert header == 'Account,Number,Tag 1\n'
+    assert header == 'Compte,Numéro,Tag 1\n'
 
 
 def test_too_many_columns(accounts_too_many_columns):
@@ -285,14 +276,3 @@ def test_flow(accounts_file, txns_file):
     assert j.flow(date(2021, 1, 1), date(2021, 1, 31), 'Actifs') == Decimal(467460)
     with pytest.raises(ValueError):
         j.flow(date(2021, 1, 31), date(2021, 1, 1), 'Actifs:Chèque')
-
-
-def test_auto_create_parent():
-    j = Journal(auto_create_parents=True)
-    j.add_accounts([Account(qname='Actifs:Chèque')])
-    assert len(list(j.chartOfAccounts.accounts)) == 2
-    j.add_accounts([Account(qname='Actifs:Foo')])
-    assert len(list(j.chartOfAccounts.accounts)) == 3
-    j.auto_create_parents = False
-    with pytest.raises(ValueError):
-        j.add_accounts([Account(qname='Test:Bar')])

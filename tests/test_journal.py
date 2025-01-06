@@ -76,13 +76,13 @@ def test_from_csv_i18n(accounts_file, txns_file, bassertions_file, budget_file,
 
 def test_check_balances(accounts_file, txns_file, bassertions_file):
     j = Journal.from_csv(accounts=accounts_file, postings=txns_file, bassertions=bassertions_file)
-    err = j.failed_bassertions(today=date(2021, 1, 30))
+    err = j.failed_bassertions()
     assert len(err) == 0
 
 
 def test_check_balances2(accounts_file, bassertions_file):
     j = Journal.from_csv(accounts=accounts_file, postings=[], bassertions=bassertions_file)
-    err = j.failed_bassertions(today=date(2021, 1, 30))
+    err = j.failed_bassertions()
     assert len(err) == 6
 
 
@@ -121,7 +121,7 @@ def test_adjust_for_bassertions(accounts_file, txns_file):
     t = j.adjust_for_bassertions(accounts=['Chèque'], counterparts=['Salaire'],
                                  comment='Adjustment for bassertion')
     assert len(t) == 2
-    assert len(j.failed_bassertions(today=date(2021, 1, 30))) == 0
+    assert len(j.failed_bassertions()) == 0
 
 
 def test_adjust_for_bassertion_child(accounts_file, txns_file):

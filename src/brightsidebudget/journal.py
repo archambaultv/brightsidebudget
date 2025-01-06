@@ -231,6 +231,7 @@ class Journal():
         for t in txns:
             all_accs = list(set(self.chartOfAccounts.short_qname(p.acc_qname) for p in t.postings))
             all_accs.sort(key=lambda x: x.sort_key)
+            all_accs = [a.qstr for a in all_accs]
             for p in t.postings:
                 full_name = p.acc_qname
                 p.tags["Nom complet"] = full_name
@@ -250,23 +251,17 @@ class Journal():
         txns = self.budget.budget_txns(start_date, end_date, counterpart)
         self.export_txns(file, encoding=encoding, txns=txns)
 
-    def failed_bassertions(self, filter_future_date: bool = True,
-                           today: date | None = None) -> list[BAssertion]:
+    def failed_bassertions(self) -> list[BAssertion]:
         """
         Returns the list of assertions that do not match the journal balances.
         The stmt_date is used to compute the actual balance.
         """
-        if today is None:
-            today = date.today()
         ls = []
         bs = sorted(self.bassertions, key=lambda x: x.date)
         acc_balance: dict[QName, Decimal] = {}
         ps_idx = 0
         ps = sorted(self.postings, key=lambda x: x.stmt_date)
         for b in bs:
-            if filter_future_date and b.date > today:
-                break
-
             # Update the account balances up to the assertion date
             while ps_idx < len(ps):
                 p = ps[ps_idx]

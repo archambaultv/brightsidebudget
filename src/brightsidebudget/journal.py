@@ -210,11 +210,17 @@ class Journal():
             b.acc_qname = self.chartOfAccounts.short_qname(b.acc_qname)
         write_bassertions(bassertions=bs, file=file, encoding=encoding)
 
-    def write_txns(self, filefunc: str | Callable[[Txn], str], encoding: str = 'utf-8'):
+    def write_txns(self, filefunc: str | Callable[[Txn], str],
+                   renumber: bool = False,
+                   encoding: str = 'utf-8'):
         """
         Writes the transactions to a CSV file.
         """
         txns = [t.copy() for t in self.txns]
+        if renumber:
+            txns.sort(key=lambda x: (x.date, x.txnid))
+            for i, t in enumerate(txns):
+                t.txnid = i + 1
         for t in txns:
             for p in t.postings:
                 p.acc_qname = self.chartOfAccounts.short_qname(p.acc_qname)

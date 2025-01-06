@@ -127,10 +127,15 @@ def load_txns(files: str | list[str], encoding: str = 'utf-8') -> list[Txn]:
 def write_txns(*,
                txns: Iterable[Txn],
                filefunc: str | Callable[[Txn], str],
+               short_name: Callable[[QName], QName] | None = None,
                encoding="utf8"):
     """
     Write the postings to one or more CSV files.
     """
+    if short_name is None:
+        def short_name(qname: QName) -> QName:
+            return qname
+
     txns = sorted(txns, key=lambda x: (x.date, x.txnid))
 
     if isinstance(filefunc, (str, PosixPath)):
@@ -158,7 +163,7 @@ def write_txns(*,
             writer.writerow(header)
             for p in ps:
                 txnid = p.txnid
-                name = p.acc_qname._qname
+                name = short_name(p.acc_qname).qstr
                 row = [txnid, p.date, name, p.amount, p.stmt_date, p.comment, p.stmt_desc]
                 for k in p_tag_keys:
                     row.append(p.tags.get(k, ''))

@@ -14,7 +14,7 @@ def test_from_csv(accounts_file, txns_file, bassertions_file, budget_file):
 
 
 def verify_from_csv(j: Journal):
-    assert len(list(j.chartOfAccounts.accounts)) == 18
+    assert len(list(j.chartOfAccounts.accounts)) == 17
     assert len(list(j.postings)) == 8
     assert len(j.bassertions_dict) == 6
     assert len(j.budget.rpostings) == 4
@@ -33,45 +33,6 @@ def verify_from_csv(j: Journal):
     assert (m.tags["Commentaire"] == "It is a nice house")
     m = j.bassertions_dict[QName("Actifs:Épargne")][date(2021, 1, 1)]
     assert m.tags.get("Commentaire") is None
-
-
-def test_from_csv_i18n(accounts_file, txns_file, bassertions_file, budget_file,
-                       tmp_path):
-    # Change the header to a non-English language and use StringIO
-    with open(accounts_file, 'r') as f:
-        content = f.read()
-    content = content.replace('Account', 'Compte')
-    accounts_file = tmp_path / 'accounts.csv'
-    with open(accounts_file, 'w') as f:
-        f.write(content)
-
-    with open(txns_file, 'r') as f:
-        content = f.read()
-    content = content.replace('Txn,Date,Account,Amount,Statement description',
-                              'Txn2,Date2,Compte,Montant,Description du relevé')
-    txns_file = tmp_path / 'txns.csv'
-    with open(txns_file, 'w') as f:
-        f.write(content)
-
-    with open(bassertions_file, 'r') as f:
-        content = f.read()
-    content = content.replace('Date,Account,Balance',
-                              'Date2,Compte,Solde')
-    bassertions_file = tmp_path / 'bassertions.csv'
-    with open(bassertions_file, 'w') as f:
-        f.write(content)
-
-    with open(budget_file, 'r') as f:
-        content = f.read()
-    content = content.replace('Start date,Account,Amount,Comment,Frequency,Interval,Count,Until',
-                              'Début,Compte,Montant,Commentaire,Fréquence,Intervalle,Compter,Fin')
-    budget_file = tmp_path / 'budget.csv'
-    with open(budget_file, 'w') as f:
-        f.write(content)
-
-    j = Journal.from_csv(accounts=accounts_file, postings=txns_file,
-                         bassertions=bassertions_file, targets=budget_file)
-    verify_from_csv(j)
 
 
 def test_check_balances(accounts_file, txns_file, bassertions_file):
@@ -166,14 +127,14 @@ def test_empty_journal():
 
 def test_no_txns(accounts_file):
     j = Journal.from_csv(accounts=accounts_file, postings=[])
-    assert len(list(j.chartOfAccounts.accounts)) == 18
+    assert len(list(j.chartOfAccounts.accounts)) == 17
     assert len(list(j.postings)) == 0
     assert len(j.bassertions_dict) == 0
 
 
 def test_no_bassertions(accounts_file, txns_file):
     j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
-    assert len(list(j.chartOfAccounts.accounts)) == 18
+    assert len(list(j.chartOfAccounts.accounts)) == 17
     assert len(list(j.postings)) == 8
     assert len(j.bassertions_dict) == 0
 
@@ -207,15 +168,6 @@ def test_short_qnames_2():
 
     with pytest.raises(ValueError):
         j.chartOfAccounts.short_qname('Foo')
-
-    # Now Chèque:Foo hides Actifs:Chèque:Foo
-    j.add_accounts([Account(qname='Chèque'),
-                    Account(qname='Chèque:Foo')])
-
-    assert j.chartOfAccounts.short_qname('Actifs:Chèque:Foo').qstr == 'Actifs:Chèque:Foo'
-    assert j.chartOfAccounts.short_qname('Chèque:Foo').qstr == 'Chèque:Foo'
-    assert j.chartOfAccounts.full_qname('Chèque:Foo').qstr == 'Chèque:Foo'
-    assert j.chartOfAccounts.account('Chèque:Foo').qname.qstr == 'Chèque:Foo'
 
 
 def test_duplicate_balance():

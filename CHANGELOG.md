@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with
 the exception that the versions 0.*.* may have breaking changes in minor versions.
 
+## [0.6.4]
+### Fixed
+- Fix `write_txns` ordering bug
+- Fix `write_bassertions` ordering bug
+
 ## [0.6.3]
 ### Added
 - Add possibility to renumber transactions on write.

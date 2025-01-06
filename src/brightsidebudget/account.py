@@ -14,12 +14,12 @@ class QName():
         if isinstance(qname, list):
             if not qname:
                 raise ValueError("Empty qname.")
-            self._qname = ':'.join(qname)
+            self._qstr = ':'.join(qname)
             self._qlist = qname
         else:
             if not qname:
                 raise ValueError("Empty qname.")
-            self._qname = qname
+            self._qstr = qname
             self._qlist = qname.split(':')
 
         if any([x == "" for x in self._qlist]):
@@ -32,7 +32,7 @@ class QName():
         """
         The qualified name as a string.
         """
-        return self._qname
+        return self._qstr
 
     @property
     def qlist(self) -> list[str]:
@@ -84,7 +84,7 @@ class QName():
         return qname.is_descendant_of(self)
 
     @property
-    def sort_key(self) -> tuple[int, str]:
+    def sort_key(self) -> tuple[int, list[str]]:
         """
         Returns a tuple that can be used for sorting.
         Ensures that the parent comes before the children and that the five
@@ -98,15 +98,15 @@ class QName():
             "Revenus": 4,
             "Dépenses": 5
         }
-        return tuple([order.get(self._qlist[0], 6), self._qname])
+        return (order.get(self._qlist[0], 6), self._qlist)
 
     def __eq__(self, other) -> bool:
         if isinstance(other, QName):
-            return self._qname == other._qname
+            return self._qstr == other._qstr
         return False
 
     def __hash__(self) -> int:
-        return hash(self._qname)
+        return hash(self._qstr)
 
     def __lt__(self, other) -> bool:
         if isinstance(other, QName):
@@ -114,7 +114,7 @@ class QName():
         return False
 
     def __str__(self):
-        return self._qname
+        return self._qstr
 
     def __repr__(self):
         return self.__str__()
@@ -166,7 +166,7 @@ def write_accounts(*,
     """
     Write the accounts to a CSV file.
     """
-    accounts = sorted(accounts, key=lambda x: x.qname.qstr)
+    accounts = sorted(accounts, key=lambda x: x.qname.sort_key)
 
     with open(file, "w", encoding=encoding) as f:
         writer = csv.writer(f, lineterminator="\n")

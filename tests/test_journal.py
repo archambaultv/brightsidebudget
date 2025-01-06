@@ -243,6 +243,17 @@ def test_write_txns(accounts_file, txns_file, tmp_path):
     assert header == 'No txn,Date,Compte,Montant,Date du relevé,Commentaire,Description du relevé\n'
 
 
+def test_export_txns(accounts_file, txns_file, tmp_path):
+    j = Journal.from_csv(accounts=accounts_file, postings=txns_file)
+    tmp_file = tmp_path / 'txns.csv'
+    j.export_txns(file=tmp_file)
+
+    j2 = Journal.from_csv(accounts=accounts_file, postings=tmp_file)
+    assert len(list(j.txns)) == len(list(j2.txns))
+    txns = list(j2.txns)
+    assert "Numéro" in txns[0].postings[0].tags
+
+
 def test_write_balances(accounts_file, bassertions_file, tmp_path):
     j = Journal.from_csv(accounts=accounts_file, postings=[], bassertions=bassertions_file)
     tmp_file = tmp_path / 'bassertions.csv'

@@ -5,6 +5,7 @@ from typing import Callable, Iterable, Union
 from brightsidebudget.account import Account, ChartOfAccounts, QName, load_accounts, write_accounts
 from brightsidebudget.bassertion import BAssertion, load_balances, write_bassertions
 from brightsidebudget.budget import Budget, RPosting, load_rpostings
+from brightsidebudget.tag import all_tags
 from brightsidebudget.txn import Posting, Txn, load_txns, write_txns
 
 
@@ -228,6 +229,7 @@ class Journal():
         if txns is None:
             txns = [t.copy() for t in self.txns]
         max_depth = self.chartOfAccounts.max_depth()
+        all_ps_tags = set(all_tags(self.postings))
         for t in txns:
             all_accs = list(set(self.chartOfAccounts.short_qname(p.acc_qname) for p in t.postings))
             all_accs.sort(key=lambda x: x.sort_key)
@@ -240,10 +242,18 @@ class Journal():
                 p.tags["Mois"] = str(p.date.month)
                 p.tags["Txn comptes"] = " | ".join(all_accs)
                 for i in range(max_depth):
-                    if i < len(full_name):
-                        p.tags[f"Compte {i+1}"] = full_name._qlist[i]
+                    if i < len(full_name.qlist):
+                        p.tags[f"Compte {i+1}"] = full_name.qlist[i]
                     else:
                         p.tags[f"Compte {i+1}"] = ""
+                for k, v in self.chartOfAccounts.account(full_name).tags.items():
+                    if k not in all_ps_tags:
+                        p.tags[k] = v
+                    else:
+                        k2 = f"Compte tag {k}"
+                        while k2 in all_ps_tags:
+                            k2 += "_"
+                        p.tags[k2] = v
         write_txns(txns=txns, filefunc=file, encoding=encoding)
 
     def export_budget(self, file: str, start_date: date, end_date: date,

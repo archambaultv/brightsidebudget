@@ -5,8 +5,8 @@ from brightsidebudget.account import Account
 
 def test_qname():
     qname = QName("A:B:C")
-    assert qname.qstr == "A:B:C"
-    assert qname.qlist == ["A", "B", "C"]
+    assert qname._qname == "A:B:C"
+    assert qname._qlist == ["A", "B", "C"]
     assert qname.depth == 3
     assert qname.parent == QName("A:B")
     assert qname.parent.parent == QName("A")
@@ -15,8 +15,8 @@ def test_qname():
     assert qname.is_descendant_of("A:B")
     assert not qname.is_descendant_of(QName("A:B:C"))
     assert not qname.is_descendant_of(QName("A:B:D"))
-    assert qname.is_equal_or_descendant_of(QName("A:B:C"))
-    assert qname.is_equal_or_descendant_of("A:B:C")
+    assert not qname.is_descendant_of(QName("A:B:C"))
+    assert not qname.is_descendant_of("A:B:C")
 
     assert QName("A").depth == 1
     assert QName("A").parent is None
@@ -51,7 +51,3 @@ def test_account():
 
     acc2 = acc.copy()
     assert acc2.qname == QName("A:B:C")
-
-    # Change name
-    acc.qname = "D:E:F"
-    assert acc.qname == QName("D:E:F")

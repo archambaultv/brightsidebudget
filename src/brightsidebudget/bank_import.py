@@ -6,7 +6,7 @@ from io import StringIO
 from typing import Callable, Union
 from brightsidebudget.account import QName
 from brightsidebudget.journal import Journal
-from brightsidebudget.posting import Posting, Txn
+from brightsidebudget.txn import Posting, Txn
 
 
 # This modules provides the building blocks to import bank transactions from a CSV file
@@ -15,15 +15,15 @@ class BankCsv():
     """
     Configuration for importing bank transactions from a CSV file.
     """
-    def __init__(self, *, file: str, qname: Union[QName, str], date_col: str,
-                 amount_col: Union[str, None] = None,
-                 amount_in_col: Union[str, None] = None,
-                 amount_out_col: Union[str, None] = None,
+    def __init__(self, *, file: str, qname: QName | None, date_col: str,
+                 amount_col: str | None = None,
+                 amount_in_col: str | None = None,
+                 amount_out_col: str | None = None,
                  stmt_desc_cols: Union[list[str], None] = None,
-                 stmt_date_col: Union[str, None] = None,
-                 remove_delimiter_from: Union[str, list[str], None] = None,
+                 stmt_date_col: str | None = None,
+                 remove_delimiter_from: str | list[str] | None = None,
                  skiprows: int = 0,
-                 dictreader_args: Union[dict[str, str], None] = None,
+                 dictreader_args: dict[str, str] | None = None,
                  encoding: str = "utf-8"):
         if amount_col is not None and (amount_in_col is not None or amount_out_col is not None):
             raise ValueError("amount_col cannot be used with amount_in_col or amount_out_col.")
@@ -105,8 +105,8 @@ class BankCsv():
 
 
 def import_bank_csv(journal: Journal, conf: BankCsv,
-                    classifier: Callable[[Posting], Union[Txn, list[Txn], None]],
-                    only_after: Union[date, None] = None,) -> list[Txn]:
+                    classifier: Callable[[Posting], Txn | list[Txn] | None],
+                    only_after: date | None = None) -> list[Txn]:
     """
     Import bank transactions from a CSV file into the journal. Filters out
     duplicates already in the journal. Returns the list of accepted postings.
@@ -119,7 +119,7 @@ def import_bank_csv(journal: Journal, conf: BankCsv,
     Txn object is not accepted, the classifier should return None.
     """
     # Use full qualified name
-    conf.acc_qname = journal.full_qname(conf.acc_qname)
+    conf.acc_qname = journal.chartOfAccounts.full_qname(conf.acc_qname)
 
     # import bank csv
     bank_ps: list[Posting] = conf.import_bank_postings(txnid=journal.next_txn_id)
@@ -127,7 +127,7 @@ def import_bank_csv(journal: Journal, conf: BankCsv,
     # Build deduplication dictionary
     dedup_ps: list[Posting] = []
     for p in journal.postings:
-        if p.acc_qname.is_equal_or_descendant_of(conf.acc_qname):
+        if p.acc_qname == conf.acc_qname or p.acc_qname.is_descendant_of(conf.acc_qname):
             dedup_ps.append(p)
 
     dedup_dict = {}

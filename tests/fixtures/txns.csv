@@ -1,9 +1,9 @@
-Txn,Date,Account,Amount,Statement description
-1,2021-01-01,Checking,2500
-1,2021-01-01,Savings,15000
-1,2021-01-01,Credit card,-1500
-1,2021-01-01,Mortgage,-300000
-1,2021-01-01,House,450000
-1,2021-01-01,Opening balance,-166000
-2,2021-01-02,Food,40,Super market
-2,2021-01-02,Checking,-40,Super market
+No txn,Date,Compte,Montant,Description du relevé
+1,2021-01-01,Chèque,2500
+1,2021-01-01,Épargne,15000
+1,2021-01-01,Carte de crédit,-1500
+1,2021-01-01,Hypothèque,-300000
+1,2021-01-01,Maison,450000
+1,2021-01-01,Solde d'ouverture,-166000
+2,2021-01-02,Nourriture,40,Super market
+2,2021-01-02,Chèque,-40,Super market

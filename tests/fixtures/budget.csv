@@ -1,5 +1,5 @@
-Start date,Account,Amount,Comment,Frequency,Interval,Count,Until
-2021-01-01,Checking,5500,Salary,monthly,1,
-2021-01-01,Savings,650,Salary,monthly,1,
-2021-01-01,Food,1300,,monthly,1,
-2021-01-01,Mortgage,500,,weekly,2
+Date de début,Compte,Montant,Comment,Fréquence,Intervalle,Nombre de fois,Date de fin
+2021-01-01,Chèque,5500,Salaire,mensuel,1,
+2021-01-01,Épargne,650,Salaire,mensuel,1,
+2021-01-01,Nourriture,1300,,mensuel,1,
+2021-01-01,Hypothèque,500,,hebdomadaire,2

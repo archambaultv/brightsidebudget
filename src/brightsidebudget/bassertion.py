@@ -2,7 +2,7 @@ import csv
 from datetime import date
 from decimal import Decimal
 from pathlib import PosixPath
-from typing import Iterable
+from typing import Callable, Iterable
 from brightsidebudget.account import QName, clean_tags
 from brightsidebudget.tag import HasTags, all_tags
 
@@ -54,10 +54,15 @@ def load_balances(balances: str, encoding: str = "utf8") -> list[BAssertion]:
 def write_bassertions(*,
                       bassertions: Iterable[BAssertion],
                       file: str | PosixPath,
+                      short_name: Callable[[QName], QName] | None = None,
                       encoding="utf8"):
     """
     Write the balance assertions to a CSV file.
     """
+    if short_name is None:
+        def short_name(qname: QName) -> QName:
+            return qname
+
     bassertions = sorted(bassertions, key=lambda x: (x.date, x.acc_qname.sort_key))
 
     with open(file, "w", encoding=encoding) as f:
@@ -67,7 +72,7 @@ def write_bassertions(*,
         header += b_tag_keys
         writer.writerow(header)
         for b in bassertions:
-            row = [b.date, b.acc_qname, b.balance]
+            row = [b.date, short_name(b.acc_qname).qstr, b.balance]
             for k in b_tag_keys:
                 row.append(b.tags.get(k, ""))
             writer.writerow(row)

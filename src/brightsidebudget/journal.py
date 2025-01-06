@@ -48,6 +48,12 @@ class Journal():
         """
         Adds a list of accounts to the journal.
         """
+        for a in accs:
+            if a.qname.qlist[0] not in ["Actifs", "Passifs", "Capitaux propres",
+                                        "Revenus", "Dépenses"]:
+                raise ValueError(f"Illegal first element: {a.qname.qlist[0]}.\
+                                First element must be one of Actifs, Passifs,\
+                                Capitaux propres, Revenus, Dépenses.")
         self.chartOfAccounts.add_accounts(accs)
 
     def add_txns(self, txns: Txn | list[Txn],
@@ -205,10 +211,9 @@ class Journal():
         """
         Writes the balance assertions to a CSV file.
         """
-        bs = [b.copy() for b in self.bassertions]
-        for b in bs:
-            b.acc_qname = self.chartOfAccounts.short_qname(b.acc_qname)
-        write_bassertions(bassertions=bs, file=file, encoding=encoding)
+        bs = self.bassertions
+        write_bassertions(bassertions=bs, file=file, encoding=encoding,
+                          short_name=self.chartOfAccounts.short_qname)
 
     def write_txns(self, filefunc: str | Callable[[Txn], str],
                    renumber: bool = False,
@@ -216,15 +221,15 @@ class Journal():
         """
         Writes the transactions to a CSV file.
         """
-        txns = [t.copy() for t in self.txns]
+        txns = self.txns
         if renumber:
+            txns = [t.copy() for t in txns]
             txns.sort(key=lambda x: (x.date, x.txnid))
             for i, t in enumerate(txns):
                 t.txnid = i + 1
-        for t in txns:
-            for p in t.postings:
-                p.acc_qname = self.chartOfAccounts.short_qname(p.acc_qname)
-        write_txns(txns=txns, filefunc=filefunc, encoding=encoding)
+
+        write_txns(txns=txns, filefunc=filefunc, encoding=encoding,
+                   short_name=self.chartOfAccounts.short_qname)
 
     def export_txns(self, file: str, encoding: str = 'utf-8',
                     txns: list[Txn] | None = None):
@@ -243,7 +248,6 @@ class Journal():
             for p in t.postings:
                 full_name = p.acc_qname
                 p.tags["Nom complet"] = full_name
-                p.acc_qname = self.chartOfAccounts.short_qname(p.acc_qname)
                 p.tags["Année"] = str(p.date.year)
                 p.tags["Mois"] = str(p.date.month)
                 p.tags["Txn comptes"] = " | ".join(all_accs)
@@ -260,7 +264,8 @@ class Journal():
                         while k2 in all_ps_tags:
                             k2 += "_"
                         p.tags[k2] = v
-        write_txns(txns=txns, filefunc=file, encoding=encoding)
+        write_txns(txns=txns, filefunc=file, encoding=encoding,
+                   short_name=self.chartOfAccounts.short_qname)
 
     def export_budget(self, file: str, start_date: date, end_date: date,
                       counterpart: QName | str, encoding: str = 'utf-8'):

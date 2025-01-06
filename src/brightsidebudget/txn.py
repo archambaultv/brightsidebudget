@@ -70,6 +70,11 @@ class Txn():
     def txnid(self) -> int:
         return self.postings[0].txnid
 
+    @txnid.setter
+    def txnid(self, value: int):
+        for p in self.postings:
+            p.txnid = value
+
     def copy(self):
         return Txn([p.copy() for p in self.postings])
 

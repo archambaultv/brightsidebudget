@@ -11,19 +11,19 @@ from brightsidebudget.txn import Posting, Txn
 
 # This modules provides the building blocks to import bank transactions from a CSV file
 
-class BankCsv():
+class BankCsv:
     """
     Configuration for importing bank transactions from a CSV file.
     """
-    def __init__(self, *, file: str, qname: QName | None, date_col: str,
+    def __init__(self, *, file: str, qname: QName | str, date_col: str,
                  amount_col: str | None = None,
                  amount_in_col: str | None = None,
                  amount_out_col: str | None = None,
                  stmt_desc_cols: Union[list[str], None] = None,
                  stmt_date_col: str | None = None,
                  remove_delimiter_from: str | list[str] | None = None,
-                 skiprows: int = 0,
-                 dictreader_args: dict[str, str] | None = None,
+                 skip_rows: int = 0,
+                 dict_reader_args: dict[str, str] | None = None,
                  encoding: str = "utf-8"):
         if amount_col is not None and (amount_in_col is not None or amount_out_col is not None):
             raise ValueError("amount_col cannot be used with amount_in_col or amount_out_col.")
@@ -43,8 +43,8 @@ class BankCsv():
             self.remove_delimiter_from = [remove_delimiter_from]
         else:
             self.remove_delimiter_from = remove_delimiter_from or []
-        self.skiprows = skiprows
-        self.dictreader_args = dictreader_args or {}
+        self.skip_rows = skip_rows
+        self.dict_reader_args = dict_reader_args or {}
 
     def import_bank_postings(self, txnid: int = 1) -> list[Posting]:
         """
@@ -54,24 +54,24 @@ class BankCsv():
         """
 
         def remove_unquoted_delimiter(content: str) -> str:
-            d = self.dictreader_args.get("separator", ",")
-            for x in self.remove_delimiter_from:
-                content = content.replace(x, x.replace(d, ""))
+            d1 = self.dict_reader_args.get("separator", ",")
+            for x2 in self.remove_delimiter_from:
+                content = content.replace(x2, x2.replace(d1, ""))
             return content
 
         if self.remove_delimiter_from:
             with open(self.file, "r", encoding=self.encoding) as f:
-                content = f.read()
-            content = remove_unquoted_delimiter(content)
-            file = StringIO(content)
+                file_content = f.read()
+            file_content = remove_unquoted_delimiter(file_content)
+            file = StringIO(file_content)
         else:
             file = open(self.file, "r", encoding=self.encoding)
 
         ps = []
         with file as f:
-            for _ in range(self.skiprows):
+            for _ in range(self.skip_rows):
                 next(f)
-            for row in csv.DictReader(f, **self.dictreader_args):
+            for row in csv.DictReader(f, **self.dict_reader_args):
                 dt = date.fromisoformat(row[self.date_col])
                 if self.amount_col:
                     amnt = Decimal(row[self.amount_col]) if row[self.amount_col] else Decimal(0)

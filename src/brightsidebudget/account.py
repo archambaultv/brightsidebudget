@@ -4,7 +4,7 @@ from typing import Callable, Iterable, Union
 from brightsidebudget.tag import all_tags, clean_tags, HasTags
 
 
-class QName():
+class QName:
     """
     QName (qualified name) is a name that uniquely identifies an account. For example,
     "Assets:Checking" is an account that represents a checking account in the
@@ -98,7 +98,7 @@ class QName():
             "Revenus": 4,
             "Dépenses": 5
         }
-        return (order.get(self._qlist[0], 6), self._qlist)
+        return order.get(self._qlist[0], 6), self._qlist
 
     def __eq__(self, other) -> bool:
         if isinstance(other, QName):
@@ -247,7 +247,7 @@ class ChartOfAccounts:
 
         # We try all possible short names starting from shortest to longest
         acc = self.account(qname)
-        qlist = acc.qname._qlist
+        qlist = acc.qname.qlist
         min_length = min(max(self.short_qname_min_length(acc.qname), 1), len(qlist))
         for i in range(min_length, len(qlist)):
             short_name = QName(qlist[-i:])
@@ -289,7 +289,7 @@ class ChartOfAccounts:
                 raise ValueError(f'Parent account {parent} does not exist')
 
             self._full_qname_dict[a.qname] = a
-            qlist = a.qname._qlist
+            qlist = a.qname.qlist
             for idx in range(1, len(qlist)):
                 short_name = QName(qlist[-idx:])
                 if short_name not in self._short_qname_dict:

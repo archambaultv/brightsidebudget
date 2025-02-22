@@ -38,11 +38,11 @@ class BAssertion:
                 writer.writerow(b.to_dict())
 
     @staticmethod
-    def get_assertions(filename: str = "Soldes.csv") -> list['BAssertion']:
+    def get_assertions(filename: str, accounts: dict[str, Account]) -> list['BAssertion']:
         bs = []
         with open(filename, "r") as file:
             for row in csv.DictReader(file):
-                bs.append(BAssertion.from_dict(row))
+                bs.append(BAssertion.from_dict(row, accounts))
 
         return bs
 

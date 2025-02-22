@@ -167,8 +167,10 @@ class Journal:
                     check_1_n: bool = True):
         if isinstance(posting_filename, str):
             posting_filename = [posting_filename]
-        j = cls(accounts=Account.get_accounts(filename=account_filename),
-                postings=Posting.get_postings(filenames=posting_filename),
-                bassertions=BAssertion.get_assertions(filename=bassertion_filename))
+        accs = Account.get_accounts(filename=account_filename)
+        accs_dict = {a.name: a for a in accs}
+        j = cls(accounts=accs,
+                postings=Posting.get_postings(filenames=posting_filename, accounts=accs_dict),
+                bassertions=BAssertion.get_assertions(filename=bassertion_filename, accounts=accs_dict))
         j.check_journal(check_bassertion=check_bassertion, check_1_n=check_1_n)
         return j

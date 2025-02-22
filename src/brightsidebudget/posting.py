@@ -108,12 +108,12 @@ class Posting:
                     writer.writerow(p.to_dict())
 
     @staticmethod
-    def get_postings(filenames: list[str]) -> list['Posting']:
+    def get_postings(filenames: list[str], accounts: dict[str, Account]) -> list['Posting']:
         ls: list[Posting] = []
         for f in filenames:
             with open(f, "r") as file:
                 for row in csv.DictReader(file):
-                    ls.append(Posting.from_dict(row))
+                    ls.append(Posting.from_dict(row, accounts))
         ls.sort(key=lambda p: p.sort_key())
         return ls
 

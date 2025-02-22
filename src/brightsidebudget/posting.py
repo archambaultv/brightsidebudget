@@ -58,7 +58,7 @@ class Posting:
 
         acc = accounts[row["Compte"]]
 
-        return cls(txnid=int(row["No txn"]), date=dt,
+        return cls(txn_id=int(row["No txn"]), date=dt,
                    account=acc, amount=amnt,
                    comment=row["Commentaire"],
                    stmt_date=stmt_dt,

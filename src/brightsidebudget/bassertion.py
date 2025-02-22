@@ -6,6 +6,8 @@ from brightsidebudget.account import Account
 
 class BAssertion:
     def __init__(self, *, date: date, account: Account, balance: Decimal, comment: str = ""):
+        if comment is None:
+            comment = ""
         comment.strip()
 
         self.date = date

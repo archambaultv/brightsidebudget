@@ -11,6 +11,8 @@ class Posting:
                  comment: str = "", stmt_date: date | None = None,
                  stmt_desc: str = ""):
         for x in [comment, stmt_desc]:
+            if x is None:
+                x = ""
             x.strip()
         if not txn_id or txn_id <= 0:
             raise ValueError("Transaction ID must be a positive integer")

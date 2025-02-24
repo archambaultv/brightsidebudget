@@ -4,7 +4,7 @@ from brightsidebudget.bsberror import BSBError
 
 
 class Account:
-    def __init__(self, *, name: str, type: str, group: str, sub_group: str, number: int):
+    def __init__(self, *, name: str, type: str, number: int, group: str = "", sub_group: str = ""):
         for x in [name, type, group, sub_group]:
             x.strip()
         if not name:

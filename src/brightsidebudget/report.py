@@ -66,10 +66,10 @@ def balance_sheet(j: Journal, params: RParams) -> str:
                 d[macc.name][i] += s
 
         if t == "Actifs":
-            col_name = f"💰 *{t}*"
+            col_name = f"💰 **{t}**"
         else:
-            col_name = f"💳 *{t}*"
-        report += mk_col([col_name] + [n(t) for t in totals])
+            col_name = f"💳 **{t}**"
+        report += mk_col([col_name] + [f"**{n(t)}**" for t in totals])
         for k, v in sorted(d.items(), key=lambda x: x[1][-1], reverse=True):
             if all(x == 0 for x in v):
                 continue
@@ -122,10 +122,10 @@ def income_stmt(j: Journal, params: RParams) -> str:
                 d[macc.name][i] += s
 
         if t == "Revenus":
-            col_name = f"💰 *{t}*"
+            col_name = f"💰 **{t}**"
         else:
-            col_name = f"💳 *{t}*"
-        report += mk_col([col_name] + [n(t) for t in totals])
+            col_name = f"💳 **{t}**"
+        report += mk_col([col_name] + [f"**{n(t)}**" for t in totals])
         for k, v in sorted(d.items(), key=lambda x: x[1][-1], reverse=True):
             if all(x == 0 for x in v):
                 continue
@@ -186,10 +186,10 @@ def flow_stmt(j: Journal, params: RParams) -> str:
                 d[macc.name][i] += s
 
         if t == "Actifs":
-            col_name = f"💰 *{t}*"
+            col_name = f"💰 **{t}**"
         else:
-            col_name = f"💳 *{t}*"
-        report += mk_col([col_name] + [n(t) for t in totals])
+            col_name = f"💳 **{t}**"
+        report += mk_col([col_name] + [f"**{n(t)}**" for t in totals])
         for k, v in sorted(d.items(), key=lambda x: x[1][-1], reverse=True):
             if all(x == 0 for x in v):
                 continue

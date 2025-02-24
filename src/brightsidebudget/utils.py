@@ -1,6 +1,8 @@
 import subprocess
 import sys
 
+from src.brightsidebudget.bsberror import BSBError
+
 
 def print_yellow(message: str, end: str = "\n"):
     print(f"\033[93m{message}\033[0m", end=end)
@@ -10,9 +12,18 @@ def print_red(message: str, end: str = "\n"):
     print(f"\033[91m{message}\033[0m", end=end)
 
 
-def exit_on_error(error: str):
-    print_red(error)
-    sys.exit(1)
+def catch_bsberror(fn):
+    """
+    Decorator to catch BSBError and print the error message in red.
+    """
+    def wrapper(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except BSBError as e:
+            print_red(e)
+            sys.exit(1)
+
+    return wrapper
 
 
 def csv_to_excel(file: str):
@@ -30,10 +41,10 @@ def check_git_clean():
             text=True
         )
         if result.returncode != 0:
-            exit_on_error("Error checking git status:", result.stderr)
+            raise BSBError("Error checking git status:", result.stderr)
 
         if result.stdout.strip():
-            exit_on_error("Uncommitted changes detected.")
+            raise BSBError("Uncommitted changes detected.")
 
     except FileNotFoundError:
-        exit_on_error("Git is not installed or not found in PATH.")
+        raise BSBError("Git is not installed or not found in PATH.")

@@ -7,94 +7,81 @@ from brightsidebudget.account import Account
 from brightsidebudget.bassertion import BAssertion
 from brightsidebudget.posting import Posting
 from brightsidebudget.utils import exit_on_error, print_yellow
+from src.brightsidebudget.bsberror import BSBError
+from src.brightsidebudget.txn import Txn
 
 
 class Journal:
-    def __init__(self, *, accounts: list[Account], postings: list[Posting],
-                 bassertions: list[BAssertion]):
-        self.accounts = accounts
-        self.accounts_dict = {a.name: a for a in accounts}
-        self.bassertions = bassertions
-        self.postings = postings
+    def __init__(self):
+        self._accounts: list[Account] = []
+        self._accounts_dict: dict[str, Account] = {}
+        self._bassertions: list[BAssertion] = []
+        self._txn_dict: list[int, Txn] = {}
+        self._postings: list[Posting] = []
+
+    @property
+    def accounts(self) -> list[Account]:
+        return self._accounts
+
+    @property
+    def accounts_dict(self) -> dict[str, Account]:
+        return self._accounts_dict
+
+    @property
+    def bassertions(self) -> list[BAssertion]:
+        return self._bassertions    
+
+    @property
+    def txn_dict(self) -> dict[int, Txn]:
+        return self._txn_dict
+
+    @property
+    def postings(self) -> list[Posting]:
+        return self._postings
+
+    def txns(self) -> list[Txn]:
+        return list(self.txn_dict.values())
 
     def get_account(self, account: str) -> Account:
         return self.accounts_dict[account]
 
-    def check_journal(self, *,
-                      check_bassertion: bool = True,
-                      check_1_n: bool = True):
-        self.check_accounts()
-        self.check_bassertions()
-        self.check_postings(check_bassertion=check_bassertion, check_1_n=check_1_n)
+    def add_account(self, account: Account):
+        if account.name in self.accounts_dict:
+            raise BSBError(f"Account '{account.name}' already exists")
+        s_number = set(a.number for a in self.accounts)
+        if account.number in s_number:
+            raise BSBError(f"Account number '{account.number}' already exists")
+        self.accounts.append(account)
+        self.accounts_dict[account.name] = account
 
-    def check_accounts(self):
-        accs = set()
-        acc_numbers = set()
-        for a in self.accounts:
-            if a.name in accs:
-                exit_on_error(f"Duplicate account '{a.name}'")
-            accs.add(a.name)
-            if a.number in acc_numbers:
-                exit_on_error(f"Duplicate account number '{a.number}'")
-            acc_numbers.add(a.number)
+    def add_bassertion(self, b: BAssertion):
+        # Check that account is in the accounts file
+        if b.account.name not in self.accounts_dict:
+            raise BSBError(f"Account '{b.account}' not in accounts file (balance assertion)")
 
-    def check_postings(self, *,
-                       check_bassertion: bool = True,
-                       check_1_n: bool = True):
-        # Check that all accounts are in the accounts file
-        for p in self.postings:
+        # Check that all balance assertions are unique
+        s = {b.dedup_key() for b in self.bassertions}
+        if b.dedup_key() in s:
+            raise BSBError(f"Duplicate balance assertion {b.dedup_key()}")
+        self.bassertions.append(b)
+
+    def add_txn(self, t: Txn):
+        for p in t:
             if p.account.name not in self.accounts_dict:
-                exit_on_error(f"Account '{p.account.name}' not in accounts file")
+                raise BSBError(f"Account '{p.account}' not in accounts file (txn {t.txn_id})")
+        if t.txn_id in self.txn_dict:
+            raise BSBError(f"Transaction '{t.txn_id}' already exists")
+        self.txn_dict[t.txn_id] = t
+        self.postings.extend(t)
 
-        # Group by txnid
-        tnx_dict = Posting.get_txns_dict(self.postings)
+    def not_1_n_txns(self) -> list[Txn]:
+        return [t for t in self.txn_dict.values() if not t.is_1_n()]
 
-        # Check txn same date and balance
-        for txnid, ps2 in tnx_dict.items():
-            if len(set(p.date for p in ps2)) != 1:
-                exit_on_error(f"Txn {txnid} has different dates")
-            pNone = None
-            for p in ps2:
-                if p.amount is None:
-                    if pNone is not None:
-                        exit_on_error(f"Txn {txnid} has more than one None amount")
-                    pNone = p
-            s = sum(p.amount for p in ps2 if p.amount is not None)
-            if pNone is not None:
-                print_yellow(f"Txn {txnid} has None amount.")
-                pNone.amount = -s
-                s = 0
+    def zero_amount_txns(self) -> list[Txn]:
+        return [t for t in self.txn_dict.values() if t.has_zero_amount()]
 
-            if s != 0:
-                exit_on_error(f"Txn {txnid} does not balance. Total: {s}")
-
-        # Check balance assertions
-        if check_bassertion:
-            for b in self.bassertions:
-                s = self.balance(b.account, b.date)
-                if s != b.balance:
-                    exit_on_error(f"Assertion {b.date} for '{b.account}' does not balance. "
-                                  f"Expected: {b.balance}, actual: {s}. "
-                                  f"Diff: {b.balance - s}")
-
-        # Display a warning in yellow if "Dépenses non classées" is used
-        for p in self.postings:
-            if p.account.name == "Dépenses non classées":
-                print_yellow(f"Dépenses non classées (txn {p.txn_id})")
-
-        # Display a warning in yellow if a posting in null
-        for p in self.postings:
-            if p.amount == 0:
-                print_yellow(f"Posting {p.txn_id} is null")
-
-        # Display a warning in yellow if transaction is not 1:n
-        if check_1_n:
-            for txnid, ps2 in tnx_dict.items():
-                pos = len([p for p in ps2 if p.amount > 0])
-                neg = len([p for p in ps2 if p.amount < 0])
-                if pos == 1 or neg == 1:
-                    continue
-                print_yellow(f"Transaction {txnid} is not 1:n")
+    def uncategorized_txns(self) -> list[Txn]:
+        return [t for t in self.txn_dict.values() if t.is_uncategorized()]
 
     def balance(self, account: str | Account, date: date) -> Decimal:
         if isinstance(account, Account):
@@ -132,28 +119,11 @@ class Journal:
                     last = b
         return last
 
-    def check_bassertions(self):
-        # Check that all accounts are in the accounts file
-        for b in self.bassertions:
-            if b.account.name not in self.accounts_dict:
-                exit_on_error(f"Account '{b.account}' not in accounts file (balance assertion)")
-
-        # Check that all balance assertions are unique
-        s = set()
-        for b in self.bassertions:
-            k = b.dedup_key()
-            if k in s:
-                exit_on_error(f"Duplicate balance assertion {k}")
-            s.add(k)
-
     def write_journal(self, *,
                       account_filename: str = "Comptes.csv",
                       posting_filename: str | Callable[[Posting], str] = "Transactions.csv",
                       bassertion_filename: str = "Soldes.csv",
-                      renumber: bool = False,
-                      check_bassertion: bool = True,
-                      check_1_n: bool = True):
-        self.check_journal(check_bassertion=check_bassertion, check_1_n=check_1_n)
+                      renumber: bool = False):
         Account.write_accounts(self.accounts, filename=account_filename)
         Posting.write_postings(ps=self.postings, renumber=renumber, filename=posting_filename)
         BAssertion.write_assertions(self.bassertions, filename=bassertion_filename)
@@ -162,15 +132,77 @@ class Journal:
     def get_journal(cls, *,
                     account_filename: str = "Comptes.csv",
                     posting_filename: str | list[str] = "Transactions.csv",
-                    bassertion_filename: str = "Soldes.csv",
-                    check_bassertion: bool = True,
-                    check_1_n: bool = True):
+                    bassertion_filename: str = "Soldes.csv"):
         if isinstance(posting_filename, str):
             posting_filename = [posting_filename]
+        
+        j = cls()
         accs = Account.get_accounts(filename=account_filename)
-        accs_dict = {a.name: a for a in accs}
-        j = cls(accounts=accs,
-                postings=Posting.get_postings(filenames=posting_filename, accounts=accs_dict),
-                bassertions=BAssertion.get_assertions(filename=bassertion_filename, accounts=accs_dict))
-        j.check_journal(check_bassertion=check_bassertion, check_1_n=check_1_n)
+        for a in accs:
+            j.add_account(a)
+
+        ps = Posting.get_postings(filenames=posting_filename, accounts=j.accounts_dict)
+        for t in Txn.from_postings(ps):
+            j.add_txn(t)
+
+        bs = BAssertion.get_assertions(filename=bassertion_filename, accounts=j.accounts_dict)
+        for b in bs:
+            j.add_bassertion(b)
         return j
+
+    def find_subset(self, *,
+                    amnt: Decimal,
+                    account: str | Account,
+                    start_date: date,
+                    end_date: date,
+                    use_stmt_date: bool = False) -> list['Posting'] | None:
+        if isinstance(account, Account):
+            account = account.name
+
+        def get_date(p: Posting) -> date:
+            return p.stmt_date if use_stmt_date else p.date
+
+        ps = [p for p in self.postings
+              if p.account.name == account
+              and get_date(p) <= end_date
+              and get_date(p) >= start_date]
+
+        ps.sort(key=lambda p: get_date(p), reverse=True)
+        subset = subset_sum([p.amount for p in ps], amnt)
+        if not subset:
+            return None
+        else:
+            return [ps[i] for i in subset]
+
+
+def subset_sum(amounts: list[Decimal], target: Decimal) -> list[int]:
+    """
+    Finds a subset of the amounts that sum to the target amount.
+    Amounts at the front of the list are preferred.
+
+    Returns the positions of the subset in the original list
+    or an empty list if no subset is found.
+    """
+    sum_dict: dict[Decimal, list[int]] = {}
+    for i, p in enumerate(amounts):
+        diff = target - p
+        # Is p the target?
+        if diff == Decimal(0):
+            return [i]
+
+        # Is there a diff in the dict that is the target?
+        if diff in sum_dict:
+            ls = sum_dict[diff]
+            ls.append(i)
+            return ls
+
+        # Too bad, we have to add p to the dict
+        for k, v in list(sum_dict.items()):  # Make a copy of the items because we mutate the dict
+            new_sum = k + p
+            if new_sum not in sum_dict:
+                ls = v.copy()
+                ls.append(i)
+                sum_dict[new_sum] = ls
+        if p not in sum_dict:
+            sum_dict[p] = [i]
+    return []

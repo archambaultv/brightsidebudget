@@ -1,4 +1,3 @@
-from collections import defaultdict
 import csv
 from datetime import date, datetime
 from decimal import Decimal
@@ -118,67 +117,3 @@ class Posting:
                     ls.append(Posting.from_dict(row, accounts))
         ls.sort(key=lambda p: p.sort_key())
         return ls
-
-    @staticmethod
-    def get_txns_dict(ps: list['Posting']) -> dict[int, list['Posting']]:
-        d: dict[int, list[Posting]] = defaultdict(list)
-        for p in ps:
-            d[p.txn_id].append(p)
-        return d
-
-    @staticmethod
-    def find_subset(*,
-                    amnt: Decimal,
-                    account: str,
-                    start_date: date,
-                    end_date: date,
-                    postings: list['Posting'],
-                    use_stmt_date: bool = False) -> list['Posting'] | None:
-
-        def get_date(p: Posting) -> date:
-            return p.stmt_date if use_stmt_date else p.date
-
-        ps = [p for p in postings
-              if p.account == account
-              and get_date(p) <= end_date
-              and get_date(p) >= start_date]
-
-        ps.sort(key=lambda p: get_date(p), reverse=True)
-        subset = subset_sum([p.amount for p in ps], amnt)
-        if not subset:
-            return None
-        else:
-            return [ps[i] for i in subset]
-
-
-def subset_sum(amounts: list[Decimal], target: Decimal) -> list[int]:
-    """
-    Finds a subset of the amounts that sum to the target amount.
-    Amounts at the front of the list are preferred.
-
-    Returns the positions of the subset in the original list
-    or an empty list if no subset is found.
-    """
-    sum_dict: dict[Decimal, list[int]] = {}
-    for i, p in enumerate(amounts):
-        diff = target - p
-        # Is p the target?
-        if diff == Decimal(0):
-            return [i]
-
-        # Is there a diff in the dict that is the target?
-        if diff in sum_dict:
-            ls = sum_dict[diff]
-            ls.append(i)
-            return ls
-
-        # Too bad, we have to add p to the dict
-        for k, v in list(sum_dict.items()):  # Make a copy of the items because we mutate the dict
-            new_sum = k + p
-            if new_sum not in sum_dict:
-                ls = v.copy()
-                ls.append(i)
-                sum_dict[new_sum] = ls
-        if p not in sum_dict:
-            sum_dict[p] = [i]
-    return []

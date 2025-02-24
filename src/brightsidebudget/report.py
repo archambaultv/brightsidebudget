@@ -22,7 +22,7 @@ class RParams:
 
 
 def _n(x: Decimal) -> str:
-    return f"{x:,.0f}".replace(",", " ")
+    return f"{x:,.0f}".replace(",", "&nbsp;")
 
 
 def _mk_row(ls: list[str]) -> str:

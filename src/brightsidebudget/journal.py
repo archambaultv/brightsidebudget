@@ -140,7 +140,7 @@ class Journal:
                     last = b
         return last
 
-    def check_bassertions(self) -> list[BAssertion]:
+    def failed_bassertions(self) -> list[BAssertion]:
         errors = []
         for b in self.bassertions:
             s = self.balance(b.account, b.date, use_stmt_date=True)

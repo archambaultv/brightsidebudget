@@ -15,6 +15,12 @@ class BAssertion:
         self.balance = balance
         self.comment = comment
 
+    def __eq__(self, other: 'BAssertion') -> bool:
+        if not isinstance(other, BAssertion):
+            return False
+        return (self.date == other.date and self.account == other.account
+                and self.balance == other.balance)
+
     def to_dict(self) -> dict[str, str]:
         return {"Date": str(self.date), "Compte": self.account.name, "Solde": str(self.balance),
                 "Commentaire": self.comment}

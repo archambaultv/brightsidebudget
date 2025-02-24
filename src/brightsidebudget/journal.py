@@ -6,9 +6,8 @@ from typing import Callable, Union
 from brightsidebudget.account import Account
 from brightsidebudget.bassertion import BAssertion
 from brightsidebudget.posting import Posting
-from brightsidebudget.utils import exit_on_error, print_yellow
-from src.brightsidebudget.bsberror import BSBError
-from src.brightsidebudget.txn import Txn
+from brightsidebudget.bsberror import BSBError
+from brightsidebudget.txn import Txn
 
 
 class Journal:
@@ -29,7 +28,7 @@ class Journal:
 
     @property
     def bassertions(self) -> list[BAssertion]:
-        return self._bassertions    
+        return self._bassertions
 
     @property
     def txn_dict(self) -> dict[int, Txn]:
@@ -83,11 +82,16 @@ class Journal:
     def uncategorized_txns(self) -> list[Txn]:
         return [t for t in self.txn_dict.values() if t.is_uncategorized()]
 
-    def balance(self, account: str | Account, date: date) -> Decimal:
+    def balance(self, account: str | Account, date: date,
+                use_stmt_date: bool = False) -> Decimal:
         if isinstance(account, Account):
             account = account.name
+
+        def get_date(p: Posting):
+            return p.stmt_date if use_stmt_date else p.date
+
         s = sum(p.amount for p in self.postings
-                if p.account.name == account and p.stmt_date <= date)
+                if p.account.name == account and get_date(p) <= date)
         return s
 
     def flow(self, account: str | Account,
@@ -119,6 +123,14 @@ class Journal:
                     last = b
         return last
 
+    def check_bassertions(self) -> list[BAssertion]:
+        errors = []
+        for b in self.bassertions:
+            s = self.balance(b.account, b.date, use_stmt_date=True)
+            if s != b.balance:
+                errors.append(b)
+        return errors
+
     def write_journal(self, *,
                       account_filename: str = "Comptes.csv",
                       posting_filename: str | Callable[[Posting], str] = "Transactions.csv",
@@ -135,7 +147,7 @@ class Journal:
                     bassertion_filename: str = "Soldes.csv"):
         if isinstance(posting_filename, str):
             posting_filename = [posting_filename]
-        
+
         j = cls()
         accs = Account.get_accounts(filename=account_filename)
         for a in accs:

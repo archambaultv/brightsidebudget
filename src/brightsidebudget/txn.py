@@ -1,7 +1,7 @@
 from collections import defaultdict
-from src.brightsidebudget.bsberror import BSBError
+from brightsidebudget.bsberror import BSBError
 from brightsidebudget.posting import Posting
-from src.brightsidebudget.account import Account
+from brightsidebudget.account import Account
 
 
 class Txn:

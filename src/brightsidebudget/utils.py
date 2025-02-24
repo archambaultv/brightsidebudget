@@ -1,7 +1,7 @@
 import subprocess
 import sys
 
-from src.brightsidebudget.bsberror import BSBError
+from brightsidebudget.bsberror import BSBError
 
 
 def print_yellow(message: str, end: str = "\n"):

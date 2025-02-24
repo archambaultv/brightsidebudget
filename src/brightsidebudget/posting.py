@@ -3,6 +3,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Callable
 from brightsidebudget.account import Account
+from brightsidebudget.bsberror import BSBError
 
 
 class Posting:
@@ -14,7 +15,7 @@ class Posting:
                 x = ""
             x.strip()
         if not txn_id or txn_id <= 0:
-            raise ValueError("Transaction ID must be a positive integer")
+            raise BSBError("Transaction ID must be a positive integer : " + str(txn_id))
         self.txn_id = txn_id
         self.date = date
         self.account = account
@@ -25,6 +26,10 @@ class Posting:
 
     def __str__(self) -> str:
         return f"{self.txn_id} {self.date} {self.account} {self.amount}"
+
+    def copy(self) -> 'Posting':
+        return Posting(txn_id=self.txn_id, date=self.date, account=self.account, amount=self.amount,
+                       comment=self.comment, stmt_date=self.stmt_date, stmt_desc=self.stmt_desc)
 
     def to_dict(self) -> dict[str, str]:
         if self.stmt_date == self.date:

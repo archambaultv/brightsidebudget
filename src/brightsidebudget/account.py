@@ -1,6 +1,6 @@
 import csv
 
-from src.brightsidebudget.bsberror import BSBError
+from brightsidebudget.bsberror import BSBError
 
 
 class Account:
@@ -11,10 +11,11 @@ class Account:
             raise ValueError("Account name cannot be empty")
         if not type:
             raise BSBError("Account type cannot be empty : " + name)
-        if type not in ["Actif", "Passif", "Capitaux propres", "Revenus", "Dépenses", "Non classé"]:
+        if type not in ["Actifs", "Passifs", "Capitaux propres", "Revenus", "Dépenses",
+                        "Non classé"]:
             raise BSBError("Wrong account type : " + type + " for account " + name)
-        if number <= 0 or number > 6000:
-            raise BSBError("Account number must be between 1 and 6000 : " + name)
+        if number < 1000 or number > 6000:
+            raise BSBError("Account number must be between 1000 and 6000 : " + name)
         self.name = name
         self.type = type
         self.group = group
@@ -28,6 +29,9 @@ class Account:
         if not isinstance(other, Account):
             return False
         return self.name == other.name
+
+    def __hash__(self):
+        return hash(self.name)
 
     def to_dict(self) -> dict[str, str]:
         return {"Compte": self.name, "Type": self.type, "Groupe": self.group,

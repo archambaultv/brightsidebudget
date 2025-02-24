@@ -71,6 +71,8 @@ def balance_sheet(j: Journal, params: RParams) -> str:
             col_name = f"💳 *{t}*"
         report += mk_col([col_name] + [n(t) for t in totals])
         for k, v in sorted(d.items(), key=lambda x: x[1][-1], reverse=True):
+            if all(x == 0 for x in v):
+                continue
             report += mk_col([f"&emsp;{k}"] + [n(t) for t in v])
 
     # Total
@@ -125,6 +127,8 @@ def income_stmt(j: Journal, params: RParams) -> str:
             col_name = f"💳 *{t}*"
         report += mk_col([col_name] + [n(t) for t in totals])
         for k, v in sorted(d.items(), key=lambda x: x[1][-1], reverse=True):
+            if all(x == 0 for x in v):
+                continue
             report += mk_col([f"&emsp;{k}"] + [n(t) for t in v])
 
     # Total
@@ -189,6 +193,8 @@ def flow_stmt(j: Journal, params: RParams) -> str:
             col_name = f"💳 *{t}*"
         report += mk_col([col_name] + [n(t) for t in totals])
         for k, v in sorted(d.items(), key=lambda x: x[1][-1], reverse=True):
+            if all(x == 0 for x in v):
+                continue
             report += mk_col([f"&emsp;{k}"] + [n(t) for t in v])
 
     # Total

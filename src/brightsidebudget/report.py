@@ -182,8 +182,6 @@ def flow_stmt(j: Journal, params: RParams) -> str:
                 start = e.replace(year=e.year - 1) + timedelta(days=1)
                 s = flow(a, start, e)
                 big_totals[i] += s
-                if t == "Passifs":
-                    s = -s
                 totals[i] += s
                 d[macc.name][i] += s
 

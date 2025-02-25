@@ -1,10 +1,13 @@
+import csv
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import Callable
 from bs4 import BeautifulSoup
 from brightsidebudget.account import Account
 from brightsidebudget.journal import Journal
+from brightsidebudget.posting import Posting
 from brightsidebudget.txn import Txn
+from brightsidebudget.utils import csv_to_excel
 
 
 class RParams:
@@ -192,3 +195,19 @@ def flow_stmt(j: Journal, params: RParams) -> str:
     report += "</table>"
 
     return _pretty_html(report)
+
+
+def export_txns(j: Journal, filename: str):
+    header = Posting.header() + ["Année fiscale"] + Account.header()[1:]
+    with open(filename, "w", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=header, lineterminator="\n")
+        writer.writeheader()
+        for p in j.postings:
+            d = p.to_dict()
+            d["Date du relevé"] = str(p.stmt_date)
+            d["Année fiscale"] = str(j.fiscal_year(p.date))
+            a = p.account.to_dict()
+            del a["Compte"]
+            d.update(a)
+            writer.writerow(d)
+    csv_to_excel(filename)

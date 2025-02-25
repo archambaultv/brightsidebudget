@@ -27,9 +27,15 @@ def catch_bsberror(fn):
 
 
 def csv_to_excel(file: str):
-    import pandas as pd
-    df = pd.read_csv(file)
-    df.to_excel(file.replace(".csv", ".xlsx"), index=False)
+    import csv
+    from openpyxl import Workbook
+    wb = Workbook()
+    ws = wb.active
+    with open(file, encoding='utf-8') as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            ws.append(row)
+    wb.save(file.replace(".csv", ".xlsx"))
 
 
 def check_git_clean():

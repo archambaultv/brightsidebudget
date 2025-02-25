@@ -6,7 +6,6 @@ from bs4 import BeautifulSoup
 from brightsidebudget.account import Account
 from brightsidebudget.journal import Journal
 from brightsidebudget.posting import Posting
-from brightsidebudget.txn import Txn
 from brightsidebudget.utils import csv_to_excel
 
 
@@ -17,8 +16,7 @@ class RParams:
                  total_name: str,
                  normalize_sign: Callable[[Decimal, Account | str], Decimal] | None = None,
                  account_alias: Callable[[Account], Account] | None = None,
-                 type_emoji: dict[str, str] | None = None,
-                 exclude_txn: Callable[[Txn], bool] | None = None):
+                 type_emoji: dict[str, str] | None = None):
         self.end_of_years = end_of_years
         self.account_types = account_types
         self.column_amnt = column_amnt
@@ -35,15 +33,9 @@ class RParams:
 
         self.account_alias = account_alias or _default_account_alias
 
-        def _default_exclude_txn(t: Txn) -> bool:
-            return False
-
-        self.exclude_txn = exclude_txn or _default_exclude_txn
-
     @classmethod
     def balance_sheet(cls, *, end_of_years: list[date],
-                      account_alias: Callable[[Account], Account] | None = None,
-                      exclude_txn: Callable[[Txn], bool] | None = None) -> 'RParams':
+                      account_alias: Callable[[Account], Account] | None = None) -> 'RParams':
         def _normalize_sign(x: Decimal, a: Account | str) -> Decimal:
             if isinstance(a, Account):
                 a = a.type
@@ -56,14 +48,12 @@ class RParams:
                    column_amnt=lambda j, a, e: j.balance(a, e),
                    total_name="Valeur nette",
                    account_alias=account_alias,
-                   exclude_txn=exclude_txn,
                    normalize_sign=_normalize_sign,
                    type_emoji={"Actifs": "💰", "Passifs": "💳"})
 
     @classmethod
     def income_stmt(cls, *, end_of_years: list[date],
-                    account_alias: Callable[[Account], Account] | None = None,
-                    exclude_txn: Callable[[Txn], bool] | None = None) -> 'RParams':
+                    account_alias: Callable[[Account], Account] | None = None) -> 'RParams':
         def _normalize_sign(x: Decimal, a: Account | str) -> Decimal:
             if isinstance(a, Account):
                 a = a.type
@@ -80,14 +70,12 @@ class RParams:
                    column_amnt=_flow,
                    normalize_sign=_normalize_sign,
                    account_alias=account_alias,
-                   exclude_txn=exclude_txn,
                    type_emoji={"Revenus": "💰", "Dépenses": "💳"},
                    total_name="Résultat")
 
     @classmethod
     def flow_stmt(cls, *, end_of_years: list[date],
-                  account_alias: Callable[[Account], Account] | None = None,
-                  exclude_txn: Callable[[Txn], bool] | None = None) -> 'RParams':
+                  account_alias: Callable[[Account], Account] | None = None) -> 'RParams':
 
         def _flow(j: Journal, a: Account, e: date) -> Decimal:
             s = e.replace(year=e.year - 1) + timedelta(days=1)
@@ -97,7 +85,6 @@ class RParams:
                    account_types=["Actifs", "Passifs"],
                    column_amnt=_flow,
                    account_alias=account_alias,
-                   exclude_txn=exclude_txn,
                    type_emoji={"Actifs": "💰", "Passifs": "💳"},
                    total_name="Résultat")
 

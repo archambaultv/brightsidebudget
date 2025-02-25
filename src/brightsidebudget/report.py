@@ -179,6 +179,9 @@ def flow_stmt(j: Journal, params: RParams) -> str:
                 totals[i] += s
                 d[macc.name][i] += s
 
+        if all(x == 0 for v in d.values() for x in v):
+            continue
+
         if t == "Actifs":
             col_name = f"<strong>💰 {t}</strong>"
         else:

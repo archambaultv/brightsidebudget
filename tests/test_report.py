@@ -35,6 +35,9 @@ def test_balance_sheet():
     rep = balance_sheet(j, params)
     with open("tests/reports/balance_sheet.html", 'r', encoding="utf-8") as f:
         expected = f.read()
+    # with open("tests/reports/balance_sheet.html", 'w', encoding="utf-8") as f:
+    #     f.write(rep)
+    #     expected = ""
     assert rep == expected
 
 
@@ -66,6 +69,9 @@ def test_income_stmt():
     rep = income_stmt(j, params)
     with open("tests/reports/income_stmt.html", 'r', encoding="utf-8") as f:
         expected = f.read()
+    # with open("tests/reports/income_stmt.html", 'w', encoding="utf-8") as f:
+    #     f.write(rep)
+    #     expected = ""
     assert rep == expected
 
 
@@ -97,4 +103,7 @@ def test_flow_stmt():
     rep = flow_stmt(j, params)
     with open("tests/reports/flow_stmt.html", 'r', encoding="utf-8") as f:
         expected = f.read()
+    # with open("tests/reports/flow_stmt.html", 'w', encoding="utf-8") as f:
+    #     f.write(rep)
+    #     expected = ""
     assert rep == expected

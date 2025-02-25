@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import Callable
+from bs4 import BeautifulSoup
 from brightsidebudget.account import Account
 from brightsidebudget.journal import Journal
 from brightsidebudget.txn import Txn
@@ -27,6 +28,11 @@ def _n(x: Decimal) -> str:
 
 def _mk_row(ls: list[str]) -> str:
     return "<tr><td>" + "</td><td>".join(ls) + "</td></tr>\n"
+
+
+def _pretty_html(html: str) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    return soup.prettify()
 
 
 def _table_header(end_of_years: list[date]) -> str:
@@ -81,7 +87,7 @@ def balance_sheet(j: Journal, params: RParams) -> str:
                       [f"<strong>{_n(t)}</strong>" for t in big_totals])
     report += "</table>"
 
-    return report
+    return _pretty_html(report)
 
 
 def income_stmt(j: Journal, params: RParams) -> str:
@@ -129,7 +135,7 @@ def income_stmt(j: Journal, params: RParams) -> str:
                       [f"<strong>{_n(t)}</strong>" for t in big_totals])
     report += "</table>"
 
-    return report
+    return _pretty_html(report)
 
 
 def flow_stmt(j: Journal, params: RParams) -> str:
@@ -185,4 +191,4 @@ def flow_stmt(j: Journal, params: RParams) -> str:
                       [f"<strong>{_n(t)}</strong>" for t in big_totals])
     report += "</table>"
 
-    return report
+    return _pretty_html(report)

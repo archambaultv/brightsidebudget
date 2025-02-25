@@ -12,17 +12,94 @@ from brightsidebudget.utils import csv_to_excel
 
 class RParams:
     def __init__(self, end_of_years: list[date],
-                 merge_accounts: dict[Account, Account] | None = None,
-                 exclude_txns: Callable[[Txn], bool] | None = None):
+                 account_types: list[str],
+                 column_amnt: Callable[[Journal, Account, date], str],
+                 total_name: str,
+                 normalize_sign: Callable[[Decimal, Account | str], Decimal] | None = None,
+                 account_alias: Callable[[Account], Account] | None = None,
+                 type_emoji: dict[str, str] | None = None,
+                 exclude_txn: Callable[[Txn], bool] | None = None):
         self.end_of_years = end_of_years
-        self.merge_accounts = merge_accounts or {}
-        self.exclude_txns = exclude_txns or (lambda x: False)
+        self.account_types = account_types
+        self.column_amnt = column_amnt
+        self.total_name = total_name
+        self.type_emoji = type_emoji or {}
 
-    def merged_account(self, account: Account) -> Account:
-        return self.merge_accounts.get(account, account)
+        def _default_normalize_sign(x: Decimal, _: Account | str) -> Decimal:
+            return x
 
-    def is_excluded_txn(self, txn: Txn) -> bool:
-        return self.exclude_txns(txn)
+        self.normalize_sign = normalize_sign or _default_normalize_sign
+
+        def _default_account_alias(a: Account) -> Account:
+            return a
+
+        self.account_alias = account_alias or _default_account_alias
+
+        def _default_exclude_txn(t: Txn) -> bool:
+            return False
+
+        self.exclude_txn = exclude_txn or _default_exclude_txn
+
+    @classmethod
+    def balance_sheet(cls, *, end_of_years: list[date],
+                      account_alias: Callable[[Account], Account] | None = None,
+                      exclude_txn: Callable[[Txn], bool] | None = None) -> 'RParams':
+        def _normalize_sign(x: Decimal, a: Account | str) -> Decimal:
+            if isinstance(a, Account):
+                a = a.type
+            if a == "Passifs":
+                return -x
+            return x
+
+        return cls(end_of_years=end_of_years,
+                   account_types=["Actifs", "Passifs"],
+                   column_amnt=lambda j, a, e: j.balance(a, e),
+                   total_name="Valeur nette",
+                   account_alias=account_alias,
+                   exclude_txn=exclude_txn,
+                   normalize_sign=_normalize_sign,
+                   type_emoji={"Actifs": "💰", "Passifs": "💳"})
+
+    @classmethod
+    def income_stmt(cls, *, end_of_years: list[date],
+                    account_alias: Callable[[Account], Account] | None = None,
+                    exclude_txn: Callable[[Txn], bool] | None = None) -> 'RParams':
+        def _normalize_sign(x: Decimal, a: Account | str) -> Decimal:
+            if isinstance(a, Account):
+                a = a.type
+            if a in ["Revenus", "Total"]:
+                return -x
+            return x
+
+        def _flow(j: Journal, a: Account, e: date) -> Decimal:
+            s = e.replace(year=e.year - 1) + timedelta(days=1)
+            return j.flow(a, s, e)
+
+        return cls(end_of_years=end_of_years,
+                   account_types=["Revenus", "Dépenses"],
+                   column_amnt=_flow,
+                   normalize_sign=_normalize_sign,
+                   account_alias=account_alias,
+                   exclude_txn=exclude_txn,
+                   type_emoji={"Revenus": "💰", "Dépenses": "💳"},
+                   total_name="Résultat")
+
+    @classmethod
+    def flow_stmt(cls, *, end_of_years: list[date],
+                  account_alias: Callable[[Account], Account] | None = None,
+                  exclude_txn: Callable[[Txn], bool] | None = None) -> 'RParams':
+
+        def _flow(j: Journal, a: Account, e: date) -> Decimal:
+            s = e.replace(year=e.year - 1) + timedelta(days=1)
+            return j.flow(a, s, e)
+
+        return cls(end_of_years=end_of_years,
+                   account_types=["Actifs", "Passifs"],
+                   column_amnt=_flow,
+                   account_alias=account_alias,
+                   exclude_txn=exclude_txn,
+                   type_emoji={"Actifs": "💰", "Passifs": "💳"},
+                   total_name="Résultat")
 
 
 def _n(x: Decimal) -> str:
@@ -30,7 +107,9 @@ def _n(x: Decimal) -> str:
 
 
 def _mk_row(ls: list[str]) -> str:
-    return "<tr><td>" + "</td><td>".join(ls) + "</td></tr>\n"
+    if not ls:
+        return ""
+    return "<tr><td>" + "</td><td>".join(ls) + "</td></tr>"
 
 
 def _pretty_html(html: str) -> str:
@@ -40,164 +119,59 @@ def _pretty_html(html: str) -> str:
 
 def _table_header(end_of_years: list[date]) -> str:
     # Year header
-    header = ("<tr>\n" +
-              "\n".join(["<th>Compte</th>"] + [f"<th>{e.year}</th>" for e in end_of_years]) +
-              "</tr>\n")
+    header = ("<thead>" +
+              "".join(["<th>Compte</th>"] + [f"<th>{e.year}</th>" for e in end_of_years]) +
+              "</thead>")
     return header
 
 
-def balance_sheet(j: Journal, params: RParams) -> str:
-    """
-    Generate an HTML balance sheet report
-    """
+def _mk_table(end_of_years: list[date], body_rows: list[str]) -> str:
+    header = _table_header(end_of_years)
+    body = "<tbody>" + "".join(body_rows) + "</tbody>"
+    return _pretty_html(f"<table>{header}{body}</table>")
 
-    # Year header
-    report = "<table>\n"
-    report += _table_header(params.end_of_years)
 
+def generic_report(j: Journal, params: RParams) -> str:
+
+    body_rows: list[str] = []
     # Assets and liabilities
     big_totals: list[Decimal] = [Decimal(0) for _ in params.end_of_years]
-    for t in ["Actifs", "Passifs"]:
-        totals: list[Decimal] = [Decimal(0) for _ in params.end_of_years]
+    for t in params.account_types:
+        sub_totals: list[Decimal] = [Decimal(0) for _ in params.end_of_years]
         d: dict[str, list[Decimal]] = {}
         for a in j.accounts:
-            macc = params.merged_account(a)
+            macc = params.account_alias(a)
             if macc.type != t:
                 continue
 
             if macc.name not in d:
                 d[macc.name] = [Decimal(0) for _ in params.end_of_years]
             for i, e in enumerate(params.end_of_years):
-                s = j.balance(a, e)
-                big_totals[i] += s
-                if t == "Passifs":
-                    s = -s
-                totals[i] += s
-                d[macc.name][i] += s
+                s = params.column_amnt(j, a, e)
+                big_totals[i] += params.normalize_sign(s, "Total")
+                sub_totals[i] += params.normalize_sign(s, t)
+                d[macc.name][i] += params.normalize_sign(s, a)
 
-        if t == "Actifs":
-            col_name = f"<strong>💰 {t}</strong>"
-        else:
-            col_name = f"<strong>💳 {t}</strong>"
-        report += _mk_row([col_name] + [f"<strong>{_n(t)}</strong>" for t in totals])
-        for k, v in sorted(d.items(), key=lambda x: x[1][-1], reverse=True):
-            if all(x == 0 for x in v):
-                continue
-            report += _mk_row([f"&emsp;{k}"] + [_n(t) for t in v])
-
-    # Total
-    report += _mk_row(["<strong>🚀 Valeur nette</strong>"] +
-                      [f"<strong>{_n(t)}</strong>" for t in big_totals])
-    report += "</table>"
-
-    return _pretty_html(report)
-
-
-def income_stmt(j: Journal, params: RParams) -> str:
-    """
-    Generate an HTML income statement report
-    """
-
-    # Year header
-    report = "<table>\n"
-    report += _table_header(params.end_of_years)
-
-    # Revenues and expenses
-    big_totals: list[Decimal] = [Decimal(0) for _ in params.end_of_years]
-    for t in ["Revenus", "Dépenses"]:
-        totals: list[Decimal] = [Decimal(0) for _ in params.end_of_years]
-        d: dict[str, list[Decimal]] = {}
-        for a in j.accounts:
-            macc = params.merged_account(a)
-            if macc.type != t:
-                continue
-
-            if macc.name not in d:
-                d[macc.name] = [Decimal(0) for _ in params.end_of_years]
-            for i, e in enumerate(params.end_of_years):
-                start = e.replace(year=e.year - 1) + timedelta(days=1)
-                s = j.flow(a, start, e)
-                big_totals[i] -= s
-                if t == "Revenus":
-                    s = -s
-                totals[i] += s
-                d[macc.name][i] += s
-
-        if t == "Revenus":
-            col_name = f"<strong>💰 {t}</strong>"
-        else:
-            col_name = f"<strong>💳 {t}</strong>"
-        report += _mk_row([col_name] + [f"<strong>{_n(t)}</strong>" for t in totals])
-        for k, v in sorted(d.items(), key=lambda x: x[1][-1], reverse=True):
-            if all(x == 0 for x in v):
-                continue
-            report += _mk_row([f"&emsp;{k}"] + [_n(t) for t in v])
-
-    # Total
-    report += _mk_row(["<strong>🚀 Résultat</strong>"] +
-                      [f"<strong>{_n(t)}</strong>" for t in big_totals])
-    report += "</table>"
-
-    return _pretty_html(report)
-
-
-def flow_stmt(j: Journal, params: RParams) -> str:
-    """
-    Generate an HTML flow statement report
-    """
-
-    def flow(a: Account, start: date, end: date) -> Decimal:
-        s = Decimal(0)
-        for t in j.txns():
-            if params.is_excluded_txn(t):
-                continue
-            for p in t:
-                if p.account == a and start <= p.date <= end:
-                    s += p.amount
-        return s
-
-    # Year header
-    report = "<table>\n"
-    report += _table_header(params.end_of_years)
-
-    # Assets and liabilities
-    big_totals: list[Decimal] = [Decimal(0) for _ in params.end_of_years]
-    for t in ["Actifs", "Passifs"]:
-        totals: list[Decimal] = [Decimal(0) for _ in params.end_of_years]
-        d: dict[str, list[Decimal]] = {}
-        for a in j.accounts:
-            macc = params.merged_account(a)
-            if macc.type != t:
-                continue
-
-            if macc.name not in d:
-                d[macc.name] = [Decimal(0) for _ in params.end_of_years]
-            for i, e in enumerate(params.end_of_years):
-                start = e.replace(year=e.year - 1) + timedelta(days=1)
-                s = flow(a, start, e)
-                big_totals[i] += s
-                totals[i] += s
-                d[macc.name][i] += s
-
+        # Skip this type if all values are zero
         if all(x == 0 for v in d.values() for x in v):
             continue
 
-        if t == "Actifs":
-            col_name = f"<strong>💰 {t}</strong>"
-        else:
-            col_name = f"<strong>💳 {t}</strong>"
-        report += _mk_row([col_name] + [f"<strong>{_n(t)}</strong>" for t in totals])
+        # Add the type subtotals
+        type_emoji = params.type_emoji.get(t, "")
+        col_name = f"<strong>{type_emoji} {t}</strong>"
+        body_rows.append(_mk_row([col_name] + [f"<strong>{_n(t)}</strong>" for t in sub_totals]))
+
+        # Add the account rows
         for k, v in sorted(d.items(), key=lambda x: x[1][-1], reverse=True):
             if all(x == 0 for x in v):
                 continue
-            report += _mk_row([f"&emsp;{k}"] + [_n(t) for t in v])
+            body_rows += _mk_row([f"&emsp;{k}"] + [_n(t) for t in v])
 
     # Total
-    report += _mk_row(["<strong>🚀 Résultat</strong>"] +
-                      [f"<strong>{_n(t)}</strong>" for t in big_totals])
-    report += "</table>"
+    body_rows.append(_mk_row([f"<strong>🚀 {params.total_name}</strong>"] +
+                             [f"<strong>{_n(t)}</strong>" for t in big_totals]))
 
-    return _pretty_html(report)
+    return _mk_table(params.end_of_years, body_rows)
 
 
 def export_txns(j: Journal, filename: str):

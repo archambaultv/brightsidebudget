@@ -5,7 +5,7 @@ from brightsidebudget.posting import Posting
 from brightsidebudget.account import Account
 from brightsidebudget.txn import Txn
 from brightsidebudget.journal import Journal
-from brightsidebudget.report import balance_sheet, RParams, export_txns, flow_stmt, income_stmt
+from brightsidebudget.report import RParams, export_txns, generic_report
 
 
 def test_balance_sheet():
@@ -31,14 +31,18 @@ def test_balance_sheet():
         t = Txn(postings=[p1, p2])
         j.add_txn(t)
 
-    params = RParams(end_of_years=[date(2024, 12, 31), date(2025, 12, 31)],
-                     merge_accounts={a3: a1})
-    rep = balance_sheet(j, params)
-    with open("tests/reports/balance_sheet.html", 'r', encoding="utf-8") as f:
-        expected = f.read()
+    end_of_years = [date(2024, 12, 31), date(2025, 12, 31)]
+
+    def account_alias(a: Account) -> Account:
+        if a == a3:
+            return a1
+        return a
+    p = RParams.balance_sheet(end_of_years=end_of_years, account_alias=account_alias)
+    rep = generic_report(j, p)
     # with open("tests/reports/balance_sheet.html", 'w', encoding="utf-8") as f:
     #     f.write(rep)
-    #     expected = ""
+    with open("tests/reports/balance_sheet.html", 'r', encoding="utf-8") as f:
+        expected = f.read()
     assert rep == expected
 
 
@@ -65,14 +69,18 @@ def test_income_stmt():
         t = Txn(postings=[p1, p2])
         j.add_txn(t)
 
-    params = RParams(end_of_years=[date(2024, 12, 31), date(2025, 12, 31)],
-                     merge_accounts={a3: a1})
-    rep = income_stmt(j, params)
-    with open("tests/reports/income_stmt.html", 'r', encoding="utf-8") as f:
-        expected = f.read()
+    end_of_years = [date(2024, 12, 31), date(2025, 12, 31)]
+
+    def account_alias(a: Account) -> Account:
+        if a == a3:
+            return a1
+        return a
+    p = RParams.income_stmt(end_of_years=end_of_years, account_alias=account_alias)
+    rep = generic_report(j, p)
     # with open("tests/reports/income_stmt.html", 'w', encoding="utf-8") as f:
     #     f.write(rep)
-    #     expected = ""
+    with open("tests/reports/income_stmt.html", 'r', encoding="utf-8") as f:
+        expected = f.read()
     assert rep == expected
 
 
@@ -99,14 +107,19 @@ def test_flow_stmt():
         t = Txn(postings=[p1, p2])
         j.add_txn(t)
 
-    params = RParams(end_of_years=[date(2024, 12, 31), date(2025, 12, 31)],
-                     merge_accounts={a3: a1})
-    rep = flow_stmt(j, params)
-    with open("tests/reports/flow_stmt.html", 'r', encoding="utf-8") as f:
-        expected = f.read()
+    end_of_years = [date(2024, 12, 31), date(2025, 12, 31)]
+
+    def account_alias(a: Account) -> Account:
+        if a == a3:
+            return a1
+        return a
+
+    p = RParams.flow_stmt(end_of_years=end_of_years, account_alias=account_alias)
+    rep = generic_report(j, p)
     # with open("tests/reports/flow_stmt.html", 'w', encoding="utf-8") as f:
     #     f.write(rep)
-    #     expected = ""
+    with open("tests/reports/flow_stmt.html", 'r', encoding="utf-8") as f:
+        expected = f.read()
     assert rep == expected
 
 

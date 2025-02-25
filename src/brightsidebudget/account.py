@@ -47,7 +47,7 @@ class Account:
     @staticmethod
     def write_accounts(accs: list['Account'], *, filename: str = "Comptes.csv"):
         accs = sorted(accs, key=lambda a: a.sort_key())
-        with open(filename, "w") as file:
+        with open(filename, "w", encoding="utf-8") as file:
             writer = csv.DictWriter(file, fieldnames=Account.header(), lineterminator="\n")
             writer.writeheader()
             for a in accs:
@@ -56,7 +56,7 @@ class Account:
     @staticmethod
     def get_accounts(filename: str = "Comptes.csv") -> list['Account']:
         ls = []
-        with open(filename, "r") as file:
+        with open(filename, "r", encoding="utf-8") as file:
             for row in csv.DictReader(file):
                 a = Account.from_dict(row)
                 ls.append(a)

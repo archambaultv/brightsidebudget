@@ -39,7 +39,7 @@ class BAssertion:
     def write_assertions(bs: list['BAssertion'],
                          filename: str = "Soldes.csv"):
         bs = sorted(bs, key=lambda b: b.sort_key())
-        with open(filename, "w") as file:
+        with open(filename, "w", encoding="utf-8") as file:
             writer = csv.DictWriter(file, fieldnames=BAssertion.header(), lineterminator="\n")
             writer.writeheader()
             for b in bs:
@@ -48,7 +48,7 @@ class BAssertion:
     @staticmethod
     def get_assertions(filename: str, accounts: dict[str, Account]) -> list['BAssertion']:
         bs = []
-        with open(filename, "r") as file:
+        with open(filename, "r", encoding="utf-8") as file:
             for row in csv.DictReader(file):
                 bs.append(BAssertion.from_dict(row, accounts))
 

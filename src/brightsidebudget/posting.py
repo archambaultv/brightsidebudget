@@ -107,7 +107,7 @@ class Posting:
             d[name].append(p)
         for name, ps in d.items():
             ps = sorted(ps, key=lambda p: (p.date, p.txn_id))
-            with open(name, "w") as file:
+            with open(name, "w", encoding="utf-8") as file:
                 writer = csv.DictWriter(file, fieldnames=Posting.header(), lineterminator="\n")
                 writer.writeheader()
                 for p in ps:
@@ -117,7 +117,7 @@ class Posting:
     def get_postings(filenames: list[str], accounts: dict[str, Account]) -> list['Posting']:
         ls: list[Posting] = []
         for f in filenames:
-            with open(f, "r") as file:
+            with open(f, "r", encoding="utf-8") as file:
                 for row in csv.DictReader(file):
                     ls.append(Posting.from_dict(row, accounts))
         ls.sort(key=lambda p: p.sort_key())

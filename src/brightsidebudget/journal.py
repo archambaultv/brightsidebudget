@@ -11,7 +11,8 @@ from brightsidebudget.txn import Txn
 
 
 class Journal:
-    def __init__(self):
+    def __init__(self, first_fiscal_month: int = 1):
+        self.first_fiscal_month = first_fiscal_month
         self._accounts: list[Account] = []
         self._accounts_dict: dict[str, Account] = {}
         self._bassertions: list[BAssertion] = []
@@ -37,6 +38,22 @@ class Journal:
     @property
     def postings(self) -> list[Posting]:
         return self._postings
+
+    def fiscal_year(self, d: date) -> int:
+        """
+        Returns the fiscal year for a given date.
+        The fiscal year starts on the first_fiscal_month.
+
+        Example:
+        - first_fiscal_month = 7
+        - d = 2022-06-30 -> fiscal year = 2022
+        - d = 2022-07-01 -> fiscal year = 2023
+        """
+        if self.first_fiscal_month == 1:
+            return d.year
+        if d.month >= self.first_fiscal_month:
+            return d.year + 1
+        return d.year
 
     def txns(self) -> list[Txn]:
         return list(self.txn_dict.values())

@@ -18,6 +18,19 @@ def test_journal__init__():
     assert j.postings == []
 
 
+def test_fiscal_year():
+    j = Journal()
+    assert j.fiscal_year(date(2022, 1, 1)) == 2022
+    assert j.fiscal_year(date(2022, 6, 30)) == 2022
+    assert j.fiscal_year(date(2022, 12, 31)) == 2022
+
+    j.first_fiscal_month = 7
+    assert j.fiscal_year(date(2022, 1, 1)) == 2022
+    assert j.fiscal_year(date(2022, 6, 30)) == 2022
+    assert j.fiscal_year(date(2022, 7, 1)) == 2023
+    assert j.fiscal_year(date(2022, 12, 31)) == 2023
+
+
 def test_add_account():
     j = Journal()
     a = Account(name="Test", number=1001, type="Actifs", group="Groupe", sub_group="Sous-groupe")

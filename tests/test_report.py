@@ -33,14 +33,18 @@ def test_balance_sheet():
 
     end_of_years = [date(2024, 12, 31), date(2025, 12, 31)]
 
-    def account_alias(a: Account) -> Account:
+    def account_alias(a: Account) -> Account | None:
         if a == a3:
-            return a1
-        return a
+            a = a1
+        if a.type in ["Actifs", "Passifs"]:
+            return a
+        else:
+            return None
+
     p = RParams.balance_sheet(end_of_years=end_of_years, account_alias=account_alias)
     rep = generic_report(j, p)
-    # with open("tests/reports/balance_sheet.html", 'w', encoding="utf-8") as f:
-    #     f.write(rep)
+    with open("tests/reports/balance_sheet.html", 'w', encoding="utf-8") as f:
+        f.write(rep)
     with open("tests/reports/balance_sheet.html", 'r', encoding="utf-8") as f:
         expected = f.read()
     assert rep == expected
@@ -71,14 +75,18 @@ def test_income_stmt():
 
     end_of_years = [date(2024, 12, 31), date(2025, 12, 31)]
 
-    def account_alias(a: Account) -> Account:
+    def account_alias(a: Account) -> Account | None:
         if a == a3:
-            return a1
-        return a
+            a = a1
+        if a.type in ["Revenus", "Dépenses"]:
+            return a
+        else:
+            return None
+
     p = RParams.income_stmt(end_of_years=end_of_years, account_alias=account_alias)
     rep = generic_report(j, p)
-    # with open("tests/reports/income_stmt.html", 'w', encoding="utf-8") as f:
-    #     f.write(rep)
+    with open("tests/reports/income_stmt.html", 'w', encoding="utf-8") as f:
+        f.write(rep)
     with open("tests/reports/income_stmt.html", 'r', encoding="utf-8") as f:
         expected = f.read()
     assert rep == expected
@@ -109,15 +117,18 @@ def test_flow_stmt():
 
     end_of_years = [date(2024, 12, 31), date(2025, 12, 31)]
 
-    def account_alias(a: Account) -> Account:
+    def account_alias(a: Account) -> Account | None:
         if a == a3:
-            return a1
-        return a
+            a = a1
+        if a.type in ["Actifs", "Passifs"]:
+            return a
+        else:
+            return None
 
     p = RParams.flow_stmt(end_of_years=end_of_years, account_alias=account_alias)
     rep = generic_report(j, p)
-    # with open("tests/reports/flow_stmt.html", 'w', encoding="utf-8") as f:
-    #     f.write(rep)
+    with open("tests/reports/flow_stmt.html", 'w', encoding="utf-8") as f:
+        f.write(rep)
     with open("tests/reports/flow_stmt.html", 'r', encoding="utf-8") as f:
         expected = f.read()
     assert rep == expected

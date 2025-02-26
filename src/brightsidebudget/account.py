@@ -11,8 +11,7 @@ class Account:
             raise ValueError("Account name cannot be empty")
         if not type:
             raise BSBError("Account type cannot be empty : " + name)
-        if type not in ["Actifs", "Passifs", "Capitaux propres", "Revenus", "Dépenses",
-                        "Non classé"]:
+        if type not in Account.known_types():
             raise BSBError("Wrong account type : " + type + " for account " + name)
         if number < 1000 or number > 6000:
             raise BSBError("Account number must be between 1000 and 6000 : " + name)
@@ -39,6 +38,14 @@ class Account:
 
     def sort_key(self) -> int:
         return self.number
+
+    @staticmethod
+    def known_types() -> list[str]:
+        return ["Actifs", "Passifs", "Capitaux propres", "Revenus", "Dépenses", "Non classé"]
+
+    @staticmethod
+    def type_sort_key(type_: str) -> int:
+        return Account.known_types().index(type_)
 
     @staticmethod
     def header() -> list[str]:

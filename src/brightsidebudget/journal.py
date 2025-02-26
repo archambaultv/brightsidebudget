@@ -164,7 +164,7 @@ class Journal:
             if isinstance(posting_filename, str):
                 posting_filename = [posting_filename]
             else:
-                posting_filename = {posting_filename(p) for p in self.postings}
+                posting_filename = list({posting_filename(p) for p in self.postings})
             fs = [account_filename, bassertion_filename] + posting_filename
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
             for f in fs:

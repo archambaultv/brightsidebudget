@@ -27,6 +27,9 @@ class Posting:
     def __str__(self) -> str:
         return f"{self.txn_id} {self.date} {self.account} {self.amount}"
 
+    def __repr__(self) -> str:
+        return self.__str__()
+
     def copy(self) -> 'Posting':
         return Posting(txn_id=self.txn_id, date=self.date, account=self.account, amount=self.amount,
                        comment=self.comment, stmt_date=self.stmt_date, stmt_desc=self.stmt_desc)

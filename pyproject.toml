@@ -22,7 +22,7 @@ dependencies = [
   "openpyxl",
   "beautifulsoup4",
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.10"
 
 [project.urls]
 Homepage = "https://github.com/archambaultv/brightsidebudget"

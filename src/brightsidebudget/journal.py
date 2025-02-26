@@ -162,11 +162,11 @@ class Journal:
             if not os.path.isdir(backup_dir):
                 raise BSBError(f"{backup_dir} is not a directory")
             if isinstance(posting_filename, str):
-                posting_filename = [posting_filename]
+                posting_files = [posting_filename]
             else:
-                posting_filename = list({posting_filename(p) for p in self.postings})
-            fs = [account_filename, bassertion_filename] + posting_filename
-            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+                posting_files = list({posting_filename(p) for p in self.postings})
+            fs = [account_filename, bassertion_filename] + posting_files
+            timestamp = datetime.now().strftime("%Y-%m-%d_%Hh%Mm%Ss")
             for f in fs:
                 basename = os.path.basename(f)
                 backup_f = os.path.join(backup_dir, f"{timestamp}_{basename}")

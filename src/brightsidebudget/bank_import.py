@@ -72,7 +72,7 @@ class BankCsv:
                         stmt_desc.append(row[col])
                 stmt_desc = " | ".join(stmt_desc)
 
-                ps.append(Posting(txnid=txn_id, date=dt, account=self.account,
+                ps.append(Posting(txn_id=txn_id, date=dt, account=self.account,
                                   amount=amount, comment="",
                                   stmt_date=stmt_dt, stmt_desc=stmt_desc))
             return ps

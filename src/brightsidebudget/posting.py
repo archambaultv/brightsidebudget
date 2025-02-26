@@ -25,7 +25,10 @@ class Posting:
         self.stmt_desc = stmt_desc
 
     def __str__(self) -> str:
-        return f"{self.txn_id} {self.date} {self.account} {self.amount}"
+        s = f"{self.txn_id} {self.date} {self.account} {self.amount}"
+        if self.stmt_desc:
+            return f"{s} {self.stmt_desc}"
+        return s
 
     def __repr__(self) -> str:
         return self.__str__()

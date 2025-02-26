@@ -104,6 +104,8 @@ class RParams:
 
 
 def _n(x: Decimal) -> str:
+    if x == 0:
+        return "0"  # Avoid -0
     return f"{x:,.0f}".replace(",", "&nbsp;")
 
 

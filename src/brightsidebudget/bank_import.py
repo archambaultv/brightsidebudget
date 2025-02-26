@@ -1,9 +1,8 @@
-from abc import ABC, abstractmethod
 import csv
 from datetime import datetime
 from decimal import Decimal
+from typing import Callable
 from brightsidebudget.account import Account
-from brightsidebudget.bsberror import BSBError
 from brightsidebudget.journal import Journal
 from brightsidebudget.posting import Posting
 from brightsidebudget.txn import Txn
@@ -79,38 +78,8 @@ class BankCsv:
             return ps
 
 
-class Classifier(ABC):
-    def __init__(self, *, from_desc: list[(str, Account)], default: Account):
-        self.from_desc = from_desc
-        self.default = default
-
-    @classmethod
-    def from_file(cls, file: str, j: Journal) -> 'Classifier':
-        desc_classify = []
-        with open(file, "r", encoding="utf8") as f:
-            csvreader = csv.reader(f)
-            # Skip header
-            next(csvreader)
-            for row in csvreader:
-                acc = row[1]
-                if acc not in j.accounts_dict:
-                    raise BSBError(f"Account '{acc}' not in accounts file (Classifier)")
-                desc_classify.append((row[0], j.get_account(acc)))
-
-        return cls(desc_classify=desc_classify, journal=j)
-
-    def find_from_desc(self, stmt_desc: str) -> Account:
-        for k, v in self.from_desc:
-            if stmt_desc.startswith(k):
-                return v
-        return self.default
-
-    @abstractmethod
-    def classify(self, p: Posting) -> list[Txn] | None:
-        pass
-
-
-def import_bank_csv(journal: Journal, bank_csv: BankCsv, classifier: Classifier) -> list[Posting]:
+def import_bank_csv(journal: Journal, bank_csv: BankCsv,
+                    classify: Callable[[Posting], Txn | list[Txn] | None]) -> list[Posting]:
     bank_ps = bank_csv.get_postings()
 
     # Remove postings that are already in the database
@@ -132,9 +101,11 @@ def import_bank_csv(journal: Journal, bank_csv: BankCsv, classifier: Classifier)
     ok_ps = []
     next_txn_id = journal.next_txn_id()
     for p in new_ps:
-        new_txns = classifier.classify(p)
-        if new_txns is None:
+        new_txns = classify(p)
+        if not new_txns:
             continue
+        if isinstance(new_txns, Txn):
+            new_txns = [new_txns]
         for t in new_txns:
             for p in t:
                 p.txn_id = next_txn_id

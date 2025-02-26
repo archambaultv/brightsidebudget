@@ -1,7 +1,9 @@
 
 from collections import defaultdict
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
+import os
+import shutil
 from typing import Callable, Union
 from brightsidebudget.account import Account
 from brightsidebudget.bassertion import BAssertion
@@ -152,7 +154,24 @@ class Journal:
                       account_filename: str = "Comptes.csv",
                       posting_filename: str | Callable[[Posting], str] = "Transactions.csv",
                       bassertion_filename: str = "Soldes.csv",
+                      backup_dir: str | None = None,
                       renumber: bool = False):
+        if backup_dir:
+            if not os.path.exists(backup_dir):
+                os.makedirs(backup_dir)
+            if not os.path.isdir(backup_dir):
+                raise BSBError(f"{backup_dir} is not a directory")
+            if isinstance(posting_filename, str):
+                posting_filename = [posting_filename]
+            else:
+                posting_filename = {posting_filename(p) for p in self.postings}
+            fs = [account_filename, bassertion_filename] + posting_filename
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            for f in fs:
+                basename = os.path.basename(f)
+                backup_f = os.path.join(backup_dir, f"{timestamp}_{basename}")
+                if os.path.exists(f):
+                    shutil.copy(f, backup_f)
         Account.write_accounts(self.accounts, filename=account_filename)
         Posting.write_postings(ps=self.postings, renumber=renumber, filename=posting_filename)
         BAssertion.write_assertions(self.bassertions, filename=bassertion_filename)

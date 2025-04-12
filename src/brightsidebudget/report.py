@@ -191,17 +191,24 @@ def generic_report(j: Journal, params: RParams) -> str:
     return _mk_table(params.end_of_years, body_rows, footer)
 
 
-def export_txns(j: Journal, filename: str):
+def export_txns(j: Journal, filename: str, filter: Callable[[Posting], bool] = None) -> None:
+    if filter is None:
+        def filter(_):
+            return True
+
     header = Posting.header() + ["Année fiscale"] + Account.header()[1:]
     with open(filename, "w", encoding="utf-8") as file:
         writer = csv.DictWriter(file, fieldnames=header, lineterminator="\n")
         writer.writeheader()
-        for p in j.postings:
-            d = p.to_dict()
-            d["Date du relevé"] = str(p.stmt_date)
-            d["Année fiscale"] = str(j.fiscal_year(p.date))
-            a = p.account.to_dict()
-            del a["Compte"]
-            d.update(a)
-            writer.writerow(d)
+        for t in j.txns():
+            if not filter(t):
+                continue
+            for p in t.postings:
+                d = p.to_dict()
+                d["Date du relevé"] = str(p.stmt_date)
+                d["Année fiscale"] = str(j.fiscal_year(p.date))
+                a = p.account.to_dict()
+                del a["Compte"]
+                d.update(a)
+                writer.writerow(d)
     csv_to_excel(filename)

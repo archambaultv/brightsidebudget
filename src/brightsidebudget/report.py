@@ -69,7 +69,7 @@ class RParams:
             return j.flow(a, s, e)
 
         def _account_alias(a: Account) -> Account | None:
-            if a.type in ["Revenus", "Dépenses"]:
+            if a.type in ["Revenus", "Dépenses", "Non classé"]:
                 return a
             return None
 
@@ -78,7 +78,7 @@ class RParams:
                    total_type="Revenus",
                    normalize_sign=_normalize_sign,
                    account_alias=account_alias or _account_alias,
-                   type_emoji={"Revenus": "💰", "Dépenses": "💳"},
+                   type_emoji={"Revenus": "💰", "Dépenses": "💳", "Non classé": "❓"},
                    total_name="Résultat")
 
     @classmethod
@@ -137,37 +137,37 @@ def _mk_table(end_of_years: list[date], body_rows: list[str], footer: str) -> st
 
 def generic_report(j: Journal, params: RParams) -> str:
     # Compute the values, aggregated by account alias
-    d: dict[Account, list[Decimal]] = {}
+    acc_amount_dict: dict[Account, list[Decimal]] = {}
     for a in j.accounts:
         acc_alias = params.account_alias(a)
         if acc_alias is None:
             continue
 
-        if acc_alias not in d:
-            d[acc_alias] = [Decimal(0) for _ in params.end_of_years]
+        if acc_alias not in acc_amount_dict:
+            acc_amount_dict[acc_alias] = [Decimal(0) for _ in params.end_of_years]
 
         for i, e in enumerate(params.end_of_years):
             s = params.column_amnt(j, a, e)
-            d[acc_alias][i] += s
+            acc_amount_dict[acc_alias][i] += s
 
-    # Find the types present in d and compute the subtotals
+    # Find the types present in acc_amount_dict and compute the subtotals
     # and rows
-    types = sorted({a.type for a in d.keys()}, key=Account.type_sort_key)
+    types = sorted({a.type for a in acc_amount_dict.keys()}, key=Account.type_sort_key)
     body_rows: list[str] = []
     for t in types:
         sign = params.normalize_sign(t)
-        d2 = {}
-        for a, v in d.items():
+        acc_normalize_dict = {}
+        for a, v in acc_amount_dict.items():
             if a.type == t:
-                d2[a.name] = [sign * x for x in v]
+                acc_normalize_dict[a.name] = [sign * x for x in v]
 
         # Skip if all values are 0
-        if all(x == 0 for v in d2.values() for x in v):
+        if all(x == 0 for v in acc_normalize_dict.values() for x in v):
             continue
 
         # Compute the subtotal
         sub_totals: list[Decimal] = [Decimal(0) for _ in params.end_of_years]
-        for k, v in d2.items():
+        for k, v in acc_normalize_dict.items():
             for i, x in enumerate(v):
                 sub_totals[i] += x
         type_emoji = params.type_emoji.get(t, "")
@@ -175,14 +175,14 @@ def generic_report(j: Journal, params: RParams) -> str:
         body_rows.append(_mk_row([col_name] + [f"<strong>{_n(t)}</strong>" for t in sub_totals]))
 
         # Add the account rows
-        for k, v in sorted(d2.items(), key=lambda x: x[1][-1], reverse=True):
+        for k, v in sorted(acc_normalize_dict.items(), key=lambda x: x[1][-1], reverse=True):
             if all(x == 0 for x in v):
                 continue
             body_rows += _mk_row([f"&emsp;{k}"] + [_n(t) for t in v])
 
     # Total
     big_totals: list[Decimal] = [Decimal(0) for _ in params.end_of_years]
-    for v in d.values():
+    for v in acc_amount_dict.values():
         for i, x in enumerate(v):
             big_totals[i] += x
     sign = params.normalize_sign(params.total_type)

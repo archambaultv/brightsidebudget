@@ -11,10 +11,11 @@ from brightsidebudget.txn import Txn
 class BankCsv:
     def __init__(self, *, file: str, date_col: str, account: Account, stmt_desc_cols: list[str],
                  stmt_date_col: str = "", amount_col: str = "", amount_in_col: str = "",
-                 amount_out_col: str = "", encoding: str = "utf8",
+                 amount_out_col: str = "", encoding: str = "utf8", csv_delimiter: str = ",",
                  remove_delimiter_from: list[str] | None = None,
                  skiprows: int = 0):
         self.file = file
+        self.csv_delimiter = csv_delimiter
         self.date_col = date_col
         self.account = account
         self.stmt_desc_cols = stmt_desc_cols
@@ -41,7 +42,7 @@ class BankCsv:
         with open(self.file, 'r', encoding=self.encoding) as f:
             for _ in range(self.skiprows):
                 next(f)
-            reader = csv.DictReader(f, delimiter=";")
+            reader = csv.DictReader(f, delimiter=self.csv_delimiter)
             ps = []
             for txn_id, row in enumerate(reader, start=next_txnid):
                 dt = datetime.strptime(row[self.date_col], "%Y-%m-%d").date()

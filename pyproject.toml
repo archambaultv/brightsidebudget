@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "brightsidebudget"
-version = "0.2.26"
+version = "0.3.1"
 authors = [
   { name="Vincent Archambault-Bouffard", email="archambault.v@gmail.com" },
 ]
@@ -21,6 +21,7 @@ keywords = ["budgeting", "accounting", "finance"]
 dependencies = [
   "openpyxl",
   "beautifulsoup4",
+  "pydantic>=2.11.7",
 ]
 requires-python = ">=3.10"
 

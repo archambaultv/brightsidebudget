@@ -30,3 +30,8 @@ Issues = "https://github.com/archambaultv/brightsidebudget/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/brightsidebudget"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+]

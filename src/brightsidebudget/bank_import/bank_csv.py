@@ -1,18 +1,16 @@
 import csv
 from decimal import Decimal
+from pathlib import Path
 
 from pydantic import BaseModel, Field
 from brightsidebudget.account.account import Account
-from brightsidebudget.bank_import.classifier import IClassifier
-from brightsidebudget.journal.journal import Journal
 from brightsidebudget.txn.posting import Posting
-from brightsidebudget.txn.txn import Txn
 
 class BankCsv(BaseModel):
     """
     Class to handle bank CSV imports.
     """
-    file: str = Field(..., min_length=1)
+    file: Path
     date_col: str = Field(..., min_length=1)
     account: Account
     stmt_desc_cols: list[str] = []
@@ -69,42 +67,3 @@ class BankCsv(BaseModel):
                                   amount=amount, comment="", # type: ignore
                                   stmt_date=stmt_date, stmt_desc=stmt_desc)) # type: ignore
             return ps
-
-
-    def get_new_txns(self, journal: Journal, classifier: IClassifier) -> list[Txn]:
-        bank_ps = self.get_bank_postings()
-
-        # Remove postings that are already in the database
-        last = journal.get_last_balance(self.account)
-        known = journal.known_keys()
-        new_ps = []
-        for p in bank_ps:
-            if last is not None and p.date <= last.date:
-                continue
-            if p.dedup_key() in known:
-                known[p.dedup_key()] -= 1
-                if known[p.dedup_key()] == 0:
-                    del known[p.dedup_key()]
-                continue
-            new_ps.append(p)
-
-        # Classify the new postings
-        new_txns: list[Txn] = []
-        for p in new_ps:
-            txns = classifier.classify(posting=p)
-            if not txns:
-                continue
-            if isinstance(txns, Txn):
-                txns = [txns]
-            new_txns.extend(txns)
-
-        # Renumber the transactions
-        next_txnid = journal.next_txn_id()
-        for i, txn in enumerate(new_txns, start=next_txnid):
-            ps = []
-            for p in txn.postings:
-                # Create a new posting with the same data but a new txn_id
-                ps.append(p.model_copy(update={"txn_id": i}))
-            new_txns[i - next_txnid] = Txn(postings=ps)
-
-        return new_txns

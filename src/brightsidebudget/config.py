@@ -9,7 +9,8 @@ class Config(BaseModel):
     
 
     journal_path: Path
-    backup_dir: Path
+    backup_dir: Path = Path("sauvagardes")
+    log_dir: Path = Path("logs")
     verify_no_uncategorized_txns: bool = True
     verify_balance_assertions: bool = True
     auto_stmt_date: list[str] = []
@@ -64,6 +65,10 @@ class Config(BaseModel):
         if not config.backup_dir.is_absolute():
             config = config.model_copy(update={
                 "backup_dir": config_path.parent / config.backup_dir
+            })
+        if not config.log_dir.is_absolute():
+            config = config.model_copy(update={
+                "log_dir": config_path.parent / config.log_dir
             })
 
         return config

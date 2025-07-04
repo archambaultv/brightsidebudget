@@ -24,7 +24,8 @@ class ExcelJournalRepository():
       - Txns
       - Soldes
     """
-    def write_journal(self, *, journal: Journal, destination: Path):
+    def write_journal(self, *, journal: Journal,
+                      destination: Path) -> None:
         wb = load_or_create_workbook(destination)
 
         # Write all three sheets to the same workbook

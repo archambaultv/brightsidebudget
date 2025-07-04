@@ -13,6 +13,16 @@ def config_fixture_path() -> Path:
     """Path to the journal.xlsx fixture file."""
     return Path("tests/fixtures/config.json")
 
+@pytest.fixture
+def bank_csv_fixture_path() -> Path:
+    """Path to the journal.xlsx fixture file."""
+    return Path("tests/fixtures/bank_csv.csv")
+
+@pytest.fixture
+def rules_fixture_path() -> Path:
+    """Path to the journal.xlsx fixture file."""
+    return Path("tests/fixtures/rules.json")
+
 @pytest.fixture(scope="session")
 def output_dir() -> Path:
     """

@@ -1,0 +1,10 @@
+date,credit,debit,category,description
+2025-02-01,2500.00,0.00,Salaire,ENTREPRISE QUÉBEC INC
+2025-02-02,0.00,65.80,Epicerie,METRO PLUS MONTRÉAL
+2025-02-03,0.00,124.50,Services publics,HYDRO-QUÉBEC
+2025-02-04,350.00,0.00,Virement,Virement Interac
+2025-02-05,0.00,45.20,Divertissement,CINÉMA ABC
+2025-02-06,0.00,89.50,Transport,STM OPUS+
+2025-02-07,125.00,0.00,Remboursement,ACME CORP
+2025-02-08,0.00,89.60,Sante,PHARMAPRIX
+2025-02-09,0,0,Frais bancaires,BANQUE XYZ

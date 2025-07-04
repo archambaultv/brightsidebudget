@@ -25,9 +25,7 @@ class Posting(BaseModel):
         return data
     
     def __str__(self) -> str:
-        s = f"{self.txn_id} {self.date} {self.account} {self.amount}"
-        if self.stmt_desc:
-            return f"{s} {self.stmt_desc}"
+        s = f"Posting(id={self.txn_id}, date={self.date}, account={self.account.name}, amount={self.amount}, stmt_desc={self.stmt_desc})"
         return s
 
     def __repr__(self) -> str:

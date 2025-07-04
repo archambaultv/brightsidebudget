@@ -1,5 +1,5 @@
 from decimal import Decimal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from brightsidebudget.account.account import Account
 from brightsidebudget.txn.posting import Posting
@@ -11,6 +11,8 @@ class Rule(BaseModel):
     A rule for classifying postings into transactions.
     Each rule is a callable that takes a Posting and returns a Txn or None.
     """
+    model_config = ConfigDict(extra="forbid")
+    
     account_name: str | None = None
     description_startswith: str | None = None
     description_equals: list[str] | None = None

@@ -1,12 +1,12 @@
 from pathlib import Path
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from brightsidebudget.journal.journal import Journal
 from brightsidebudget.journal.excel_journal_repository import ExcelJournalRepository
 
 
 class Config(BaseModel):
-    
+    model_config = ConfigDict(extra="forbid")
 
     journal_path: Path
     backup_dir: Path = Path("sauvagardes")

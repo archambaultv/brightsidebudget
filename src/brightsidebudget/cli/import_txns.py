@@ -12,7 +12,7 @@ from brightsidebudget.bank_import.classifier import RuleClassifier
 from brightsidebudget.bassertion.bassertion import BAssertion
 from brightsidebudget.config import Config
 from brightsidebudget.journal.journal import Journal
-from brightsidebudget.journal.journal_repository import ExcelJournalRepository
+from brightsidebudget.journal.excel_journal_repository import ExcelJournalRepository
 from brightsidebudget.txn.posting import Posting
 from brightsidebudget.txn.txn import Txn
 

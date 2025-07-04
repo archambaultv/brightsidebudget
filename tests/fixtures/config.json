@@ -1,5 +1,6 @@
 {
     "journal_path": "journal.xlsx",
+    "backup_dir": "../output/backups",
     "verify_no_uncategorized_txns": true,
     "verify_balance_assertions": true
 }

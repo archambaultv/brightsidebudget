@@ -2,7 +2,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from brightsidebudget.journal.journal import Journal
-from brightsidebudget.journal.journal_repository import ExcelJournalRepository
+from brightsidebudget.journal.excel_journal_repository import ExcelJournalRepository
 
 
 class Config(BaseModel):

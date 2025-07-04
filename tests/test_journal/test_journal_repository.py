@@ -3,7 +3,7 @@ import shutil
 from pathlib import Path
 
 from brightsidebudget.account.account import Account
-from brightsidebudget.journal.journal_repository import ExcelJournalRepository
+from brightsidebudget.journal.excel_journal_repository import ExcelJournalRepository
 from brightsidebudget.journal.journal import Journal
 from brightsidebudget.txn.posting import Posting
 

@@ -3,7 +3,7 @@ from brightsidebudget.account.account_type import AccountType
 
 
 class Account(BaseModel):
-    
+    model_config = {"frozen": True}
 
     name: str = Field(..., min_length=1, description="Name of the account")
     type: AccountType = Field(..., description="Type of the account")

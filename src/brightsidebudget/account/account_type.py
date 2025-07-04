@@ -16,7 +16,7 @@ class AccountType(BaseModel):
     """
     Represents the type of an account.
     """
-    
+    model_config = ConfigDict(frozen=True)
     name : Literal["Actifs", "Passifs", "Capitaux propres", "Revenus", "Dépenses", "Non classé"]
 
     def sort_key(self) -> int:

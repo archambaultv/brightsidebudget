@@ -46,6 +46,11 @@ def import_txns_command(config_path: Path, dry_run: bool = False):
     auto_update_journal(journal, config)
     import_new_txns(journal, config)
     if not dry_run:
+        # Backup journal before importing
+        now = datetime.now().strftime("%Y-%m-%d_%Hh%Mm%Ss")
+        backup_name = f"{config.journal_path.stem}-{now}.xlsx"
+        shutil.copy(config.journal_path, config.backup_dir / backup_name)
+
         # Save the journal after import
         repo = ExcelJournalRepository()
         repo.write_journal(journal=journal, destination=config.journal_path)
@@ -58,11 +63,6 @@ def import_new_txns(journal: Journal, config: Config):
     """
     if not config.importation:
         return
-
-    # Backup journal before importing
-    now = datetime.now().strftime("%Y-%m-%d_%Hh%Mm%Ss")
-    backup_name = f"{config.journal_path.stem}-{now}.xlsx"
-    shutil.copy(config.journal_path, config.backup_dir / backup_name)
 
     for import_conf in config.importation:
         # Create classifier

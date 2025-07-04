@@ -33,11 +33,11 @@ class ExcelPostingRepository():
         ws.append(HEADER)
         for p in ps:
             ws.append([
-                str(p.txn_id),
-                str(p.date),
+                p.txn_id,
+                p.date,
                 p.account.name,
-                str(p.amount),
-                str(p.stmt_date),
+                float(p.amount),
+                p.stmt_date,
                 p.comment,
                 p.stmt_desc
             ])

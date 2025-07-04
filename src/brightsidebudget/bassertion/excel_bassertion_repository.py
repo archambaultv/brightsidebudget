@@ -23,9 +23,9 @@ class ExcelBAssertionRepository():
         ws.append(HEADER)
         for b in bs:
             ws.append([
-                str(b.date),
+                b.date,
                 b.account.name,
-                str(b.balance),
+                float(b.balance),
                 b.comment
             ])
 

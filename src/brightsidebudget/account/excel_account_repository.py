@@ -34,7 +34,7 @@ class ExcelAccountRepository():
                 a.type.name,
                 a.group,
                 a.subgroup,
-                str(a.number)
+                a.number
             ])
         
         # Update the table range

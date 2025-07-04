@@ -1,6 +1,7 @@
 import click
 
 from brightsidebudget.cli.check import check_command
+from brightsidebudget.cli.import_txns import import_txns_command
 
 
 @click.group(help="bsb — Bright Side Budget CLI")
@@ -12,6 +13,7 @@ def cli():
 
 # Ajout des commandes à la CLI
 cli.add_command(check_command)
+cli.add_command(import_txns_command)
 
 def main():
     """

@@ -2,12 +2,12 @@ from datetime import date as date_type
 from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, Field, model_validator
 from brightsidebudget.account.account import Account
 
 
 class Posting(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    
     txn_id: int = Field(..., ge=0, description="Transaction ID, must be a positive integer")
     date: date_type = Field(..., description="Date of the transaction")
     account: Account = Field(..., description="Account associated with the transaction")

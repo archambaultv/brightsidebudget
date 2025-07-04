@@ -1,13 +1,13 @@
 from collections import defaultdict
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, Field, model_validator
 from brightsidebudget.txn.posting import Posting
 from brightsidebudget.account.account import Account
 
 
 class Txn(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    
 
     postings : list[Posting] = Field(..., min_length=2, description="List of postings in the transaction")
     

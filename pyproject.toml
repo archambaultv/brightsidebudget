@@ -23,6 +23,7 @@ dependencies = [
   "beautifulsoup4",
   "pydantic>=2.11.7",
   "click>=8.2.1",
+  "dateutils>=0.6.12",
 ]
 requires-python = ">=3.10"
 

@@ -1,9 +1,9 @@
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, Field, model_validator
 from brightsidebudget.account.account_type import AccountType
 
 
 class Account(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    
 
     name: str = Field(..., min_length=1, description="Name of the account")
     type: AccountType = Field(..., description="Type of the account")

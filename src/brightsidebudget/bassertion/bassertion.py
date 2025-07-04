@@ -1,12 +1,12 @@
 from datetime import date as date_type
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 from brightsidebudget.account.account import Account
 
 
 class BAssertion(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    
 
     date: date_type
     account: Account

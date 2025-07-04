@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Union
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, model_validator
 from brightsidebudget.account.account import Account
 from brightsidebudget.bassertion.bassertion import BAssertion
 from brightsidebudget.txn.posting import Posting
@@ -12,7 +12,7 @@ from brightsidebudget.txn.txn import Txn
 
 
 class Journal(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    
 
     accounts: list[Account]
     txns: list[Txn]
@@ -51,6 +51,21 @@ class Journal(BaseModel):
 
         return self
 
+    def add_txn(self, txn: Txn) -> None:
+        """
+        Adds a transaction to the journal.
+        """
+        if txn.txn_id in (t.txn_id for t in self.txns):
+            raise ValueError(f"Transaction ID {txn.txn_id} already exists in journal")
+        self.txns.append(txn)
+
+    def add_bassertion(self, bassertion: BAssertion) -> None:
+        """
+        Adds a balance assertion to the journal.
+        """
+        if bassertion.dedup_key() in (b.dedup_key() for b in self.bassertions):
+            raise ValueError(f"Balance assertion for {bassertion.account.name} on {bassertion.date} already exists")
+        self.bassertions.append(bassertion)
 
     def get_accounts_dict(self) -> dict[str, Account]:
         return {a.name: a for a in self.accounts}

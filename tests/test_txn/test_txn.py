@@ -63,35 +63,6 @@ def test_txn_accounts_sorted():
     assert accounts[0].name == "A"
     assert accounts[1].name == "B"
 
-def test_txn_is_1_n_true():
-    p1 = make_posting(amount=Decimal("10"), account=make_account(name="A"))
-    p2 = make_posting(amount=Decimal("-5"), account=make_account(name="B"))
-    p3 = make_posting(amount=Decimal("-5"), account=make_account(name="C"))
-    txn = Txn(postings=[p1, p2, p3])
-    assert txn.is_1_n() is True
-
-def test_txn_is_1_n_false():
-    p1 = make_posting(amount=Decimal("10"), account=make_account(name="A"))
-    p2 = make_posting(amount=Decimal("-5"), account=make_account(name="B"))
-    p3 = make_posting(amount=Decimal("-5"), account=make_account(name="C"))
-    p4 = make_posting(amount=Decimal("-5"), account=make_account(name="D"))
-    p5 = make_posting(amount=Decimal("5"), account=make_account(name="E"))
-    txn = Txn(postings=[p1, p2, p3, p4, p5])
-    assert txn.is_1_n() is False
-
-def test_txn_has_zero_amount_true():
-    p1 = make_posting(amount=Decimal("0"))
-    p2 = make_posting(amount=Decimal("5"))
-    p3 = make_posting(amount=Decimal("-5"))
-    txn = Txn(postings=[p1, p2, p3])
-    assert txn.has_zero_amount() is True
-
-def test_txn_has_zero_amount_false():
-    p1 = make_posting(amount=Decimal("10"))
-    p2 = make_posting(amount=Decimal("-10"))
-    txn = Txn(postings=[p1, p2])
-    assert txn.has_zero_amount() is False
-
 def test_txn_is_uncategorized_true():
     acc = make_account(type_name="Non classé", number=6001)
     p1 = make_posting(account=acc, amount=Decimal("10"))

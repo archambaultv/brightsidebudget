@@ -1,4 +1,3 @@
-import csv
 from pathlib import Path
 from typing import Protocol
 
@@ -23,29 +22,6 @@ class IAccountRepository(Protocol):
     def get_accounts(self, source: Path) -> list[Account]:
         """Retrieve accounts."""
         ...
-
-class CsvAccountRepository(IAccountRepository):
-    """Repository for managing accounts in CSV format."""
-
-    def write_accounts(self, *,
-                       accounts: list['Account'],
-                       destination: Path):
-        accounts = sorted(accounts, key=lambda a: a.sort_key())
-        with open(destination, "w", encoding="utf-8") as file:
-            writer = csv.DictWriter(file, 
-                                    fieldnames=HEADER,
-                                    lineterminator="\n")
-            writer.writeheader()
-            for a in accounts:
-                writer.writerow(a.to_dict())
-
-    def get_accounts(self, source: Path) -> list['Account']:
-        ls = []
-        with open(source, "r", encoding="utf-8", newline='') as file:
-            for row in csv.DictReader(file):
-                a = Account.from_dict(row)
-                ls.append(a)
-        return ls
 
 class ExcelAccountRepository(IAccountRepository):
     """Repository for managing accounts in Excel format."""

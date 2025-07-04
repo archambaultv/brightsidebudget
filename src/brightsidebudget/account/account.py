@@ -35,13 +35,3 @@ class Account(BaseModel):
         Returns a sort key for the account based on its number.
         """
         return self.number
-
-    def to_dict(self) -> dict[str, str]:
-        return {"Compte": self.name, "Type": self.type.name, "Groupe": self.group,
-                "Sous-groupe": self.subgroup, "Numéro": str(self.number)}
-
-    @classmethod
-    def from_dict(cls, row: dict[str, str]) -> 'Account':
-        return cls(name=row["Compte"], type=AccountType(name=row["Type"]), # type: ignore
-                   group=row["Groupe"], subgroup=row["Sous-groupe"],
-                   number=int(row["Numéro"]))

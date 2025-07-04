@@ -38,7 +38,6 @@ def sample_bassertions(sample_accounts):
 @pytest.fixture
 def journal(sample_accounts, sample_txns, sample_bassertions):
     return Journal(
-        first_fiscal_month=1,
         accounts=sample_accounts,
         txns=sample_txns,
         bassertions=sample_bassertions
@@ -59,18 +58,6 @@ def test_get_postings(journal: Journal, sample_postings):
     assert postings[0] == sample_postings[0]
     assert postings[1] == sample_postings[1]
     assert postings[2] == sample_postings[2]
-
-def test_fiscal_year(journal: Journal):
-    assert journal.fiscal_year(date(2023, 1, 1)) == 2023
-    assert journal.fiscal_year(date(2022, 12, 31)) == 2022
-
-    j2 = journal.model_copy(update={"first_fiscal_month": 7})
-    assert j2.fiscal_year(date(2022, 6, 30)) == 2022
-    assert j2.fiscal_year(date(2022, 7, 1)) == 2023
-    assert j2.fiscal_year(date(2023, 1, 1)) == 2023
-    assert j2.fiscal_year(date(2023, 6, 30)) == 2023
-    assert j2.fiscal_year(date(2023, 7, 1)) == 2024
-
 
 def test_get_account(journal: Journal, sample_accounts):
     assert journal.get_account("Cash") == sample_accounts[0]
@@ -98,7 +85,6 @@ def test_duplicate_account_name(sample_accounts, sample_txns, sample_bassertions
     accounts = sample_accounts + sample_accounts[0:1]
     with pytest.raises(ValueError):
         Journal(
-            first_fiscal_month=1,
             accounts=accounts,
             txns=sample_txns,
             bassertions=sample_bassertions
@@ -108,7 +94,6 @@ def test_duplicate_account_number(sample_accounts, sample_txns, sample_bassertio
     accounts = sample_accounts + [Account(name="Other", number=1000, type="Actifs")]  # type: ignore
     with pytest.raises(ValueError):
         Journal(
-            first_fiscal_month=1,
             accounts=accounts,
             txns=sample_txns,
             bassertions=sample_bassertions

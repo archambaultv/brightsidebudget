@@ -22,8 +22,12 @@ dependencies = [
   "openpyxl",
   "beautifulsoup4",
   "pydantic>=2.11.7",
+  "click>=8.2.1",
 ]
 requires-python = ">=3.10"
+
+[project.scripts]
+bsb = "brightsidebudget.cli.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/archambaultv/brightsidebudget"

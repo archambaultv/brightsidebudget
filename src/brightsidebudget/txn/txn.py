@@ -22,17 +22,6 @@ class Txn(BaseModel):
     def accounts(self) -> list[Account]:
         return sorted({p.account for p in self.postings}, key=lambda a: a.sort_key()) # type: ignore
 
-    def is_1_n(self) -> bool:
-        pos = len([p for p in self.postings if p.amount > 0])
-        neg = len([p for p in self.postings if p.amount < 0])
-        if pos == 1 or neg == 1:
-            return True
-        else:
-            return False
-
-    def has_zero_amount(self) -> bool:
-        return any(p.amount == 0 for p in self.postings)
-
     def is_uncategorized(self) -> bool:
         return any(p.account.type.name == "Non classé" for p in self.postings)
 

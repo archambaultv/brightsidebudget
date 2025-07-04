@@ -1,0 +1,5 @@
+{
+    "journal_path": "journal.xlsx",
+    "verify_no_uncategorized_txns": true,
+    "verify_balance_assertions": true
+}

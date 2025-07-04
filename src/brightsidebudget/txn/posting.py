@@ -1,6 +1,5 @@
 from datetime import date as date_type
 from decimal import Decimal
-from functools import reduce
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -34,22 +33,6 @@ class Posting(BaseModel):
     def __repr__(self) -> str:
         return self.__str__()
 
-    def to_dict(self) -> dict[str, str]:
-        return {"No txn": str(self.txn_id), "Date": str(self.date), "Compte": self.account.name,
-                "Montant": str(self.amount), "Commentaire": self.comment,
-                "Date du relevé": str(self.stmt_date),
-                "Description du relevé": self.stmt_desc}
-
-    @classmethod
-    def from_dict(cls, row: dict[str, str], accounts: dict[str, Account]) -> 'Posting':
-        acc = accounts[row["Compte"]]
-
-        return cls(txn_id=row["No txn"], date=row["Date"], # type: ignore
-                   account=acc, amount=row["Montant"], # type: ignore
-                   comment=row["Commentaire"],
-                   stmt_date=row.get("Date du relevé", None), # type: ignore
-                   stmt_desc=row["Description du relevé"])
-
     def dedup_key(self) -> tuple[date_type, str, Decimal, str]:
         return self.date, self.account.name, self.amount, self.stmt_desc
 
@@ -65,25 +48,24 @@ class Posting(BaseModel):
         if not postings:
             return []
 
-        def foo(acc: tuple[list['Posting'], int], posting: 'Posting') -> tuple[list['Posting'], int]:
-            new_ps, last_txn_id = acc
-            
-            if posting.txn_id != last_txn_id:
-                new_id = new_ps[-1].txn_id + 1
-            else:
-                new_id = new_ps[-1].txn_id
-            
-            new_posting = posting.model_copy(update={"txn_id": new_id})
-            new_ps.append(new_posting)
-            
-            return new_ps, posting.txn_id
-        
-        # Initialize with first posting
+        # Sort postings by transaction ID
         ps = sorted(postings, key=lambda p: p.txn_id)
-        first_posting = ps[0].model_copy(update={"txn_id": 1})
-        initial_acc = ([first_posting], ps[0].txn_id)
+        
+        # Initialize result list with first posting renumbered to 1
+        result = [ps[0].model_copy(update={"txn_id": 1})]
+        last_txn_id = ps[0].txn_id
         
         # Process remaining postings
-        final_acc, _ = reduce(foo, ps[1:], initial_acc)
+        for posting in ps[1:]:
+            if posting.txn_id != last_txn_id:
+                # New transaction - increment ID
+                new_id = result[-1].txn_id + 1
+            else:
+                # Same transaction - keep same ID
+                new_id = result[-1].txn_id
+            
+            new_posting = posting.model_copy(update={"txn_id": new_id})
+            result.append(new_posting)
+            last_txn_id = posting.txn_id
         
-        return final_acc
+        return result

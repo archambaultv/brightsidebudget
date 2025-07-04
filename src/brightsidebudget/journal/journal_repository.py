@@ -4,13 +4,13 @@ from brightsidebudget.journal.journal import Journal
 from brightsidebudget.txn.txn import Txn
 
 from brightsidebudget.account.account_repository import (
-    CsvAccountRepository, ExcelAccountRepository
+    ExcelAccountRepository
 )
 from brightsidebudget.txn.posting_repository import (
-    CsvPostingRepository, ExcelPostingRepository
+    ExcelPostingRepository
 )
 from brightsidebudget.bassertion.bassertion_repository import (
-    CsvBAssertionRepository, ExcelBAssertionRepository
+    ExcelBAssertionRepository
 )
 
 class IJournalRepository(Protocol):
@@ -19,39 +19,6 @@ class IJournalRepository(Protocol):
 
     def get_journal(self, source: Path) -> Journal:
         ...
-
-class CsvJournalRepository(IJournalRepository):
-    """
-    Journal repository for CSV files.
-    Expects three files in the destination directory:
-      - Comptes.csv
-      - Transactions.csv
-      - Soldes.csv
-    """
-    def write_journal(self, *, journal: Journal, destination: Path):
-        dest = Path(destination)
-        dest.mkdir(parents=True, exist_ok=True)
-        CsvAccountRepository().write_accounts(
-            accounts=journal.accounts,
-            destination=dest / "Comptes.csv"
-        )
-        CsvPostingRepository().write_postings(
-            postings=journal.get_postings(),
-            destination=dest / "Transactions.csv"
-        )
-        CsvBAssertionRepository().write_bassertions(
-            bassertions=journal.bassertions,
-            destination=dest / "Soldes.csv"
-        )
-
-    def get_journal(self, source: Path) -> Journal:
-        src = Path(source)
-        accounts = CsvAccountRepository().get_accounts(src / "Comptes.csv")
-        accounts_dict = {a.name: a for a in accounts}
-        postings = CsvPostingRepository().get_postings(src / "Transactions.csv", accounts_dict)
-        txns = Txn.from_postings(postings)
-        bassertions = CsvBAssertionRepository().get_bassertions(src / "Soldes.csv", accounts_dict)
-        return Journal(accounts=accounts, txns=txns, bassertions=bassertions)
 
 class ExcelJournalRepository(IJournalRepository):
     """

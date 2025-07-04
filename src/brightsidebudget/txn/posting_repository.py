@@ -1,4 +1,3 @@
-import csv
 from pathlib import Path
 from typing import Protocol
 
@@ -24,32 +23,6 @@ class IPostingRepository(Protocol):
     def get_postings(self, source: Path, accounts: dict[str, Account]) -> list[Posting]:
         """Retrieve postings."""
         ...
-
-
-class CsvPostingRepository(IPostingRepository):
-    """Repository for managing postings in CSV format."""
-
-    def write_postings(self, *, 
-                       postings: list[Posting], 
-                       destination: Path):
-        """Write postings to CSV file."""
-        ps = sorted(postings, key=lambda p: p.sort_key())
-        
-        # Write to the single destination file
-        file_path = Path(destination)
-        with open(file_path, "w", encoding="utf-8") as file:
-            writer = csv.DictWriter(file, fieldnames=HEADER, lineterminator="\n")
-            writer.writeheader()
-            for p in ps:
-                writer.writerow(p.to_dict())
-
-    def get_postings(self, source: Path, accounts: dict[str, Account]) -> list[Posting]:
-        """Retrieve postings from CSV file."""
-        ls: list[Posting] = []
-        with open(source, "r", encoding="utf-8", newline='') as file:
-            for row in csv.DictReader(file):
-                ls.append(Posting.from_dict(row, accounts))
-        return ls
 
 class ExcelPostingRepository(IPostingRepository):
     """Repository for managing postings in Excel format."""
@@ -136,17 +109,18 @@ class ExcelPostingRepository(IPostingRepository):
                 raise ValueError("Row does not contain enough columns for Posting data.")
             txn_id, date_str, compte, montant, stmt_date_str, commentaire, description = row
             
-            # Convert to dict format expected by Posting.from_dict
-            row_dict = {
-                "No txn": str(txn_id),
-                "Date": str(date_str),
-                "Compte": str(compte),
-                "Montant": str(montant),
-                "Date du relevé": str(stmt_date_str),
-                "Commentaire": str(commentaire) if commentaire else "",
-                "Description du relevé": str(description) if description else ""
-            }
-            
-            posting = Posting.from_dict(row_dict, accounts)
+            try:
+                # Convert to dict format expected by Posting.from_dict
+                posting = Posting(
+                    txn_id=txn_id, # type: ignore
+                    date=date_str,  # type: ignore
+                    account=accounts[str(compte)],
+                    amount=montant,  # type: ignore
+                    stmt_date=stmt_date_str, # type: ignore
+                    comment=commentaire if commentaire else "",  # type: ignore
+                    stmt_desc=description if description else ""  # type: ignore
+                )
+            except Exception as e:
+                raise ValueError(f"Error processing row {row}") from e
             postings.append(posting)
         return postings

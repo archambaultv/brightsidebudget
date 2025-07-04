@@ -8,6 +8,11 @@ def journal_fixture_path() -> Path:
     """Path to the journal.xlsx fixture file."""
     return Path("tests/fixtures/journal.xlsx")
 
+@pytest.fixture
+def config_fixture_path() -> Path:
+    """Path to the journal.xlsx fixture file."""
+    return Path("tests/fixtures/config.json")
+
 @pytest.fixture(scope="session")
 def output_dir() -> Path:
     """

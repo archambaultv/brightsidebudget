@@ -43,59 +43,6 @@ def test_posting_init2(account):
     assert p.stmt_date == date(2024, 6, 1)
     assert p.stmt_desc == ""
 
-def test_posting_to_dict(account):
-    p = Posting(
-        txn_id=10,
-        date=date(2024, 6, 5),
-        account=account,
-        amount=Decimal("123.45"),
-        comment="A comment",
-        stmt_date=date(2024, 6, 6),
-        stmt_desc="Statement desc"
-    )
-    d = p.to_dict()
-    assert d == {
-        "No txn": "10",
-        "Date": "2024-06-05",
-        "Compte": "Banque",
-        "Montant": "123.45",
-        "Commentaire": "A comment",
-        "Date du relevé": "2024-06-06",
-        "Description du relevé": "Statement desc"
-    }
-
-def test_posting_from_dict(account):
-    row = {
-        "No txn": "5",
-        "Date": "2024-06-07",
-        "Compte": "Banque",
-        "Montant": "555.55",
-        "Commentaire": "Test comment",
-        "Date du relevé": "2024-06-08",
-        "Description du relevé": "Desc"
-    }
-    accounts = {"Banque": account}
-    p = Posting.from_dict(row, accounts)
-    assert p.txn_id == 5
-    assert p.date == date(2024, 6, 7)
-    assert p.account == account
-    assert p.amount == Decimal("555.55")
-    assert p.comment == "Test comment"
-    assert p.stmt_date == date(2024, 6, 8)
-    assert p.stmt_desc == "Desc"
-
-def test_posting_from_dict_stmt_date_default(account):
-    row = {
-        "No txn": "6",
-        "Date": "2024-06-09",
-        "Compte": "Banque",
-        "Montant": "10.00",
-        "Commentaire": "",
-        "Description du relevé": ""
-    }
-    accounts = {"Banque": account}
-    p = Posting.from_dict(row, accounts)
-    assert p.stmt_date == date(2024, 6, 9)
 
 def test_posting_dedup_key(account):
     p = Posting(

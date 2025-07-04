@@ -17,29 +17,6 @@ def sample_bassertion(sample_account):
         comment="Test comment"
     )
 
-def test_to_dict(sample_bassertion: BAssertion):
-    result = sample_bassertion.to_dict()
-    assert result == {
-        "Date": "2024-06-01",
-        "Compte": "Checking",
-        "Solde": "100.50",
-        "Commentaire": "Test comment"
-    }
-
-def test_from_dict(sample_account: Account):
-    row = {
-        "Date": "2024-06-01",
-        "Compte": "Checking",
-        "Solde": "100.50",
-        "Commentaire": "Test comment"
-    }
-    accounts = {"Checking": sample_account}
-    bassertion = BAssertion.from_dict(row, accounts)
-    assert str(bassertion.date) == "2024-06-01"
-    assert bassertion.account == sample_account
-    assert bassertion.balance == Decimal("100.50")
-    assert bassertion.comment == "Test comment"
-
 def test_dedup_key(sample_bassertion):
     key = sample_bassertion.dedup_key()
     assert key == (date(2024, 6, 1), "Checking")

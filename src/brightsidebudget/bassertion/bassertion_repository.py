@@ -1,4 +1,3 @@
-import csv
 from pathlib import Path
 from typing import Protocol
 import openpyxl
@@ -19,26 +18,6 @@ class IBAssertionRepository(Protocol):
 
     def get_bassertions(self, source: Path, accounts: dict[str, Account]) -> list[BAssertion]:
         ...
-
-
-class CsvBAssertionRepository(IBAssertionRepository):
-    """Repository for managing BAssertions in CSV format."""
-
-    def write_bassertions(self, *, bassertions: list[BAssertion], destination: Path):
-        bs = sorted(bassertions, key=lambda b: b.sort_key())
-        file_path = Path(destination)
-        with open(file_path, "w", encoding="utf-8", newline="") as file:
-            writer = csv.DictWriter(file, fieldnames=HEADER, lineterminator="\n")
-            writer.writeheader()
-            for b in bs:
-                writer.writerow(b.to_dict())
-
-    def get_bassertions(self, source: Path, accounts: dict[str, Account]) -> list[BAssertion]:
-        ls: list[BAssertion] = []
-        with open(source, "r", encoding="utf-8", newline='') as file:
-            for row in csv.DictReader(file):
-                ls.append(BAssertion.from_dict(row, accounts))
-        return ls
 
 
 class ExcelBAssertionRepository(IBAssertionRepository):
@@ -105,12 +84,11 @@ class ExcelBAssertionRepository(IBAssertionRepository):
             if len(row) < 4:
                 raise ValueError("Row does not contain enough columns for BAssertion data.")
             date_str, compte, solde, commentaire = row
-            row_dict = {
-                "Date": str(date_str),
-                "Compte": str(compte),
-                "Solde": str(solde),
-                "Commentaire": str(commentaire) if commentaire else ""
-            }
-            bassertion = BAssertion.from_dict(row_dict, accounts)
+            bassertion = BAssertion(
+                date=date_str, # type: ignore
+                account=accounts[str(compte)],
+                balance=solde, # type: ignore
+                comment=commentaire if commentaire else "" # type: ignore
+            )
             bassertions.append(bassertion)
         return bassertions

@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Union
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 from brightsidebudget.account.account import Account
 from brightsidebudget.bassertion.bassertion import BAssertion
 from brightsidebudget.txn.posting import Posting
@@ -14,7 +14,6 @@ from brightsidebudget.txn.txn import Txn
 class Journal(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    first_fiscal_month: int = Field(default=1, description="The first month of the fiscal year (1-12)") 
     accounts: list[Account]
     txns: list[Txn]
     bassertions: list[BAssertion]
@@ -61,22 +60,6 @@ class Journal(BaseModel):
 
     def get_postings(self) -> list[Posting]:
         return [posting for txn in self.txns for posting in txn.postings]
-
-    def fiscal_year(self, d: date) -> int:
-        """
-        Returns the fiscal year for a given date.
-        The fiscal year starts on the first_fiscal_month.
-
-        Example:
-        - first_fiscal_month = 7
-        - d = 2022-06-30 -> fiscal year = 2022
-        - d = 2022-07-01 -> fiscal year = 2023
-        """
-        if self.first_fiscal_month == 1:
-            return d.year
-        if d.month >= self.first_fiscal_month:
-            return d.year + 1
-        return d.year
 
     def get_account(self, account: str) -> Account:
         for a in self.accounts:

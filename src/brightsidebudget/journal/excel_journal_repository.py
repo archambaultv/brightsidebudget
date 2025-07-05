@@ -13,7 +13,7 @@ from brightsidebudget.txn.posting_repository import (
 from brightsidebudget.bassertion.excel_bassertion_repository import (
     ExcelBAssertionRepository
 )
-from brightsidebudget.utils.excel_utils import get_or_create_clean_ws, load_or_create_workbook
+from brightsidebudget.utils.excel_utils import get_or_create_clean_ws
 
 
 class ExcelJournalRepository():
@@ -26,7 +26,13 @@ class ExcelJournalRepository():
     """
     def write_journal(self, *, journal: Journal,
                       destination: Path) -> None:
-        wb = load_or_create_workbook(destination)
+        #wb = load_or_create_workbook(destination)
+        # Simply creates a new one, because modifying existing tables
+        # does not work well with openpyxl
+        wb = openpyxl.Workbook()
+        if wb.active:
+            # If the active sheet is not empty, remove it
+            wb.remove(wb.active)
 
         # Write all three sheets to the same workbook
         ws = get_or_create_clean_ws(wb, "Comptes")

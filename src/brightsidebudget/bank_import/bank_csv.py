@@ -43,29 +43,32 @@ class BankCsv(BaseModel):
             reader = csv.DictReader(f, delimiter=self.csv_delimiter)
             ps = []
             for txn_id, row in enumerate(reader, start=next_txnid):
-                if self.amount_col:
-                    amount = row[self.amount_col]
-                else:
-                    amount_in = row[self.amount_in_col]
-                    if not amount_in:
-                        amount_in = "0"
-                    amount_out = row[self.amount_out_col]
-                    if not amount_out:
-                        amount_out = "0"
-                    amount = Decimal(amount_in) - Decimal(amount_out)
+                try:
+                    if self.amount_col:
+                        amount = row[self.amount_col]
+                    else:
+                        amount_in = row[self.amount_in_col]
+                        if not amount_in:
+                            amount_in = "0"
+                        amount_out = row[self.amount_out_col]
+                        if not amount_out:
+                            amount_out = "0"
+                        amount = Decimal(amount_in) - Decimal(amount_out)
 
-                if not self.stmt_date_col:
-                    stmt_date = None
-                else:
-                    stmt_date = row[self.stmt_date_col]
+                    if not self.stmt_date_col:
+                        stmt_date = None
+                    else:
+                        stmt_date = row[self.stmt_date_col]
 
-                stmt_desc = []
-                for col in self.stmt_desc_cols:
-                    if row[col]:
-                        stmt_desc.append(row[col])
-                stmt_desc = " | ".join(stmt_desc)
+                    stmt_desc = []
+                    for col in self.stmt_desc_cols:
+                        if row[col]:
+                            stmt_desc.append(row[col])
+                    stmt_desc = " | ".join(stmt_desc)
 
-                ps.append(Posting(txn_id=txn_id, date=row[self.date_col], account=self.account, # type: ignore
-                                  amount=amount, comment="", # type: ignore
-                                  stmt_date=stmt_date, stmt_desc=stmt_desc)) # type: ignore
+                    ps.append(Posting(txn_id=txn_id, date=row[self.date_col], account=self.account, # type: ignore
+                                    amount=amount, comment="", # type: ignore
+                                    stmt_date=stmt_date, stmt_desc=stmt_desc)) # type: ignore
+                except Exception as e:
+                    raise ValueError(f"Error in csv '{self.file}' row {row}") from e
             return ps

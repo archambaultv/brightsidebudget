@@ -72,8 +72,8 @@ class ExcelPostingRepository():
                     account=accounts[str(compte)],
                     amount=montant,  # type: ignore
                     stmt_date=stmt_date_str, # type: ignore
-                    comment=commentaire if commentaire else "",  # type: ignore
-                    stmt_desc=description if description else ""  # type: ignore
+                    comment=str(commentaire) if commentaire else "",  # type: ignore
+                    stmt_desc=str(description) if description else ""  # type: ignore
                 )
             except Exception as e:
                 raise ValueError(f"Error processing row {row}") from e

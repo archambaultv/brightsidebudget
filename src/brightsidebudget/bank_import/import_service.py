@@ -27,17 +27,37 @@ class ImportService:
         """
         journal = self.config.get_journal(skip_check=True)
         self.auto_update_journal(journal, self.config)
-        self.import_new_txns(journal, self.config)
+        txns = self.import_new_txns(journal, self.config)
+        self.new_txns_report(txns)
         return journal
 
+    def new_txns_report(self, txns: list[Txn]):
+        """
+        Prints a report of the new transactions imported.
+        """
+        # Number of uncategorized transactions
+        uncategorized = [t for t in txns if t.is_uncategorized()]
+        descriptions = {}
+        for t in uncategorized:
+            descriptions[t.postings[0].stmt_desc] = descriptions.get(t.postings[0].stmt_desc, 0) + 1
+        if uncategorized:
+            print(f"Found {len(uncategorized)} uncategorized transactions with {len(descriptions)} unique descriptions:")
+            xs = sorted(descriptions.items(), key=lambda x: x[1], reverse=True)
+            xs = xs[:10]  # Show top 10 descriptions
+            max_desc_width = max(len(desc) for desc, _ in xs) if xs else 0
+            max_count_width = len(str(max(count for _, count in xs))) if xs else 0
+            for desc, count in xs:
+                print(f"  - {desc:<{max_desc_width}} ({count:>{max_count_width}} occurrences)")
 
-    def import_new_txns(self, journal: Journal, config: Config):
+    def import_new_txns(self, journal: Journal, config: Config) -> list[Txn]:
         """
         Imports new transactions into the journal based on the configuration.
+        Modifies the journal in place and returns the new transactions added.
         """
         if not config.importation:
-            return
+            return []
 
+        new_txns: list[Txn] = []
         for import_conf in config.importation:
             # Create classifier
             acc = journal.get_account(import_conf["account"])
@@ -70,8 +90,10 @@ class ImportService:
                 msg = f"Importing {len(txns)} transactions from '{file.name}' into account '{acc.name}'"
                 self.logger.info(msg)
                 print(msg)
+                new_txns.extend(txns)
                 for t in txns:
                     journal.add_txn(t)
+        return new_txns
 
     def auto_update_journal(self, journal: Journal, config: Config):
         acc_names = [a.name for a in journal.accounts]

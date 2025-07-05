@@ -2,7 +2,7 @@ import csv
 from decimal import Decimal
 from pathlib import Path
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from brightsidebudget.account.account import Account
 from brightsidebudget.txn.posting import Posting
 
@@ -10,6 +10,8 @@ class BankCsv(BaseModel):
     """
     Class to handle bank CSV imports.
     """
+    model_config = ConfigDict(extra="forbid")
+
     file: Path
     date_col: str = Field(..., min_length=1)
     account: Account

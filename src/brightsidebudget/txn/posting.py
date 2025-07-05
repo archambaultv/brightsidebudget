@@ -46,8 +46,8 @@ class Posting(BaseModel):
         if not postings:
             return []
 
-        # Sort postings by transaction ID
-        ps = sorted(postings, key=lambda p: p.txn_id)
+        # Sort postings by their sort key
+        ps = sorted(postings, key=lambda p: p.sort_key())
         
         # Initialize result list with first posting renumbered to 1
         result = [ps[0].model_copy(update={"txn_id": 1})]

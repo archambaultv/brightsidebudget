@@ -25,7 +25,8 @@ class ExcelJournalRepository():
       - Soldes
     """
     def write_journal(self, *, journal: Journal,
-                      destination: Path) -> None:
+                      destination: Path,
+                      first_fiscal_month: int = 1) -> None:
         #wb = load_or_create_workbook(destination)
         # Simply creates a new one, because modifying existing tables
         # does not work well with openpyxl
@@ -42,9 +43,11 @@ class ExcelJournalRepository():
         )
 
         ws = get_or_create_clean_ws(wb, "Txns")
-        ExcelPostingRepository().write_postings_worksheet(
-            postings=journal.get_postings(),
-            ws=ws
+
+        ExcelPostingRepository().write_txns_extra_worksheet(
+            txns=journal.txns,
+            ws=ws,
+            first_fiscal_month=first_fiscal_month
         )
 
         ws = get_or_create_clean_ws(wb, "Soldes")

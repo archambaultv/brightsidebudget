@@ -1,5 +1,5 @@
 from pathlib import Path
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from brightsidebudget.journal.journal import Journal
 from brightsidebudget.journal.excel_journal_repository import ExcelJournalRepository
@@ -11,6 +11,7 @@ class Config(BaseModel):
     journal_path: Path
     backup_dir: Path = Path("sauvagardes")
     log_dir: Path = Path("logs")
+    first_fiscal_month: int = Field(ge=1, le=12, default=1)
     verify_no_uncategorized_txns: bool = True
     verify_balance_assertions: bool = True
     auto_stmt_date: list[str] = []
@@ -43,9 +44,15 @@ class Config(BaseModel):
             if self.verify_balance_assertions:
                 unbal = journal.failed_bassertions()
                 if unbal:
-                    ids = ', '.join(str(b.dedup_key()) for b in unbal)
-                    raise ValueError("Journal contains balance assertions that do not balance. "
-                                    f"Assertion keys: {ids}")
+                    msg = "Journal contains balance assertions that do not balance."
+                    for bassertion in unbal:
+                        actual = journal.account_balance(bassertion.account.name, bassertion.date,
+                                                         use_stmt_date=True)
+                        msg += f"\n  - {bassertion.date} {bassertion.account.name}"
+                        msg += f" expected {bassertion.balance}, " \
+                               f"found {actual}" \
+                               f" (difference: {bassertion.balance - actual})"
+                    raise ValueError(msg)
         
         return journal
 

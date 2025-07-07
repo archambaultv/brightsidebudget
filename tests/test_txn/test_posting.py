@@ -66,7 +66,7 @@ def test_posting_sort_key(account):
         stmt_date=date(2024, 6, 11),
         stmt_desc=""
     )
-    assert p.sort_key() == (date(2024, 6, 11), 8, 1001)
+    assert p.sort_key() == (date(2024, 6, 11), 1001, 8)
 
 def test_posting_renumber(account):
     p1 = Posting(

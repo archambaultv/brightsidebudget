@@ -87,7 +87,8 @@ def import_txns_command(config_path: Path, dry_run: bool = False):
         # Save the journal after import
         repo = ExcelJournalRepository()
         repo.write_journal(journal=journal, destination=config.journal_path,
-                            first_fiscal_month=config.first_fiscal_month)
+                           renumber=True,
+                           first_fiscal_month=config.first_fiscal_month)
     msg = f"Importation terminée{' (dry-run)' if dry_run else ''}."
     logger.info(msg)
     print(msg)

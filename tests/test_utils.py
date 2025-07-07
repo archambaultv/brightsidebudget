@@ -1,5 +1,6 @@
+
 from datetime import date
-from brightsidebudget.txn.posting_extra import fiscal_year
+from brightsidebudget.utils import fiscal_year
 
 
 def test_fiscal_year():

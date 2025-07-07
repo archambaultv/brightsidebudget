@@ -31,7 +31,7 @@ class Config(BaseModel):
             repo = ExcelJournalRepository()
         else:
             raise ValueError(f"Unsupported journal file format: {self.journal_path}")
-        journal = repo.get_journal(self.journal_path)
+        journal = repo.read_journal(self.journal_path)
 
         if not skip_check:
             if self.verify_no_uncategorized_txns:

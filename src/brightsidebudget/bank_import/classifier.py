@@ -33,7 +33,7 @@ class RuleClassifier(BaseModel):
             self._rules = self.load_rules()
         for rule in self._rules:
             if rule.match(posting):
-                txns = rule.get_txns(posting, self.accounts)
+                txns = rule.make_txns(posting, self.accounts)
                 self.logger.info(f"Posting {posting} classified by rule: {rule}")
                 return txns
         

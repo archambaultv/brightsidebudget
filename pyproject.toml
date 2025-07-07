@@ -19,11 +19,12 @@ classifiers = [
 ]
 keywords = ["budgeting", "accounting", "finance"]
 dependencies = [
-  "openpyxl",
-  "beautifulsoup4",
   "pydantic>=2.11.7",
   "click>=8.2.1",
   "dateutils>=0.6.12",
+  "polars>=1.31.0",
+  "xlsxwriter>=3.2.5",
+  "fastexcel>=0.14.0",
 ]
 requires-python = ">=3.10"
 

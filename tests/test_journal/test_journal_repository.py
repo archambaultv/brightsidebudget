@@ -1,5 +1,4 @@
 from decimal import Decimal
-import shutil
 from pathlib import Path
 
 from brightsidebudget.account.account import Account
@@ -10,7 +9,7 @@ from brightsidebudget.txn.posting import Posting
 
 def test_read_excel(journal_fixture_path):
     excel_repo = ExcelJournalRepository()
-    accounts = excel_repo.get_journal(journal_fixture_path)
+    accounts = excel_repo.read_journal(journal_fixture_path)
     _check_journal(accounts)
 
 def _check_journal(journal: Journal):
@@ -98,21 +97,10 @@ def _check_accounts(accounts: list[Account]):
     assert carte_credit.subgroup == ""
 
 def test_write_new_excel(journal_fixture_path: Path, output_dir: Path):
-    destination = output_dir / f"{journal_fixture_path.stem}-xl-new.xlsx"
+    destination = output_dir / f"{journal_fixture_path.stem}-new.xlsx"
     repo = ExcelJournalRepository()
-    journal = repo.get_journal(journal_fixture_path)
+    journal = repo.read_journal(journal_fixture_path)
     repo.write_journal(journal=journal, destination=destination)
 
-    journal2 = repo.get_journal(destination)
-    assert journal2 == journal
-
-
-def test_write_old_excel_same(journal_fixture_path: Path, output_dir: Path):
-    destination = output_dir / f"{journal_fixture_path.stem}-xl-update-same.xlsx"
-    shutil.copy(journal_fixture_path, destination)
-    repo = ExcelJournalRepository()
-    journal = repo.get_journal(journal_fixture_path)
-    repo.write_journal(journal=journal, destination=destination)
-
-    journal2 = repo.get_journal(destination)
+    journal2 = repo.read_journal(destination)
     assert journal2 == journal

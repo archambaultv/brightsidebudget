@@ -43,7 +43,7 @@ class Rule(BaseModel):
         
         return True
 
-    def get_txns(self, posting: Posting, accounts: dict[str, Account]) -> list[Txn] | None:
+    def make_txns(self, posting: Posting, accounts: dict[str, Account]) -> list[Txn] | None:
         """
         Create transactions based on the rule and the given posting.
         """

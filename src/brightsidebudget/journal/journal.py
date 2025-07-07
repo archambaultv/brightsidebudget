@@ -133,7 +133,6 @@ class Journal(BaseModel):
                 errors.append(b)
         return errors
 
-
     def find_subset(self, *,
                     amnt: Decimal,
                     account: str | Account,

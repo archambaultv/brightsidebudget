@@ -35,7 +35,11 @@ class Posting(BaseModel):
         return self.date, self.account.name, self.amount, self.stmt_desc
 
     def sort_key(self) -> tuple[date_type, int, int]:
-        return self.date, self.txn_id, self.account.number
+        """
+        Sort key for postings.
+        Sorts by date, then by account number, then by transaction ID.
+        """
+        return self.date, self.account.number, self.txn_id
 
     @staticmethod
     def renumber(postings: list['Posting']) -> list['Posting']:

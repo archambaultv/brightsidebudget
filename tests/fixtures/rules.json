@@ -1,0 +1,32 @@
+[
+    {
+        "amount_equals": 0,
+        "discard": true
+    },
+    {
+        "account_name": "Compte chèque",
+        "description_equals": ["ENTREPRISE QUÉBEC INC"],
+        "amount_greater_than": 0,
+        "second_account_name": "Revenus A"
+    },
+    {
+        "account_name": "Compte chèque",
+        "description_equals": ["Virement Interac"],
+        "amount_equals": 350,
+        "second_account_name": "Revenus B"
+    },
+    {
+        "account_name": "Compte chèque",
+        "description_equals": ["METRO PLUS MONTRÉAL"],
+        "second_account_name": "Dépenses courantes"
+    },
+    {
+        "account_name": "Compte chèque",
+        "description_equals": ["HYDRO-QUÉBEC", "STM OPUS+", "PHARMAPRIX"],
+        "amount_less_than": 0,
+        "second_account_name": "Dépenses courantes"
+    },
+    {
+        "second_account_name": "Non classé"
+    }
+]

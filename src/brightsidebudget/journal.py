@@ -2,11 +2,15 @@
 from collections import defaultdict
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 from typing import Union
 
 from pydantic import BaseModel, model_validator
+import xlsxwriter
+import polars as pl
+
 from brightsidebudget.account.account import Account
-from brightsidebudget.bassertion.bassertion import BAssertion
+from brightsidebudget.bassertion import BAssertion
 from brightsidebudget.txn.posting import Posting
 from brightsidebudget.txn.txn import Txn
 
@@ -160,6 +164,87 @@ class Journal(BaseModel):
         else:
             return [ps[i] for i in subset]
 
+    def to_excel(self, *,
+                 destination: Path,
+                 split_into_pairs: bool = False,
+                 renumber: bool = False,
+                 extra_columns: bool = False,
+                 first_fiscal_month: int = 1,
+                 opening_balance_date: date | None = None,
+                 opening_balance_account: Account | None = None
+                 ) -> None:
+        # Create three polars DataFrames and save them as tables in an Excel file.
+        acc_df = Account.to_dataframe(self.accounts)
+        ps_df = Txn.to_dataframe(
+            self.txns,
+            renumber=renumber,
+            split_into_pairs=split_into_pairs,
+            extra_columns=extra_columns,
+            first_fiscal_month=first_fiscal_month,
+            opening_balance_date=opening_balance_date,
+            opening_balance_account=opening_balance_account)
+        bassertions_df = BAssertion.to_dataframe(self.bassertions)
+
+        wb = xlsxwriter.Workbook(destination)
+        acc_df.write_excel(
+            workbook=wb,
+            worksheet="Comptes",
+            table_name="Comptes",
+            table_style="TableStyleMedium2",
+            hide_gridlines= True)
+        ps_df.write_excel(
+            workbook=wb,
+            worksheet="Txns",
+            table_name="Txns",
+            table_style="TableStyleMedium2",
+            hide_gridlines=True)
+        bassertions_df.write_excel(
+            workbook=wb,
+            worksheet="Soldes",
+            table_name="Soldes",
+            table_style="TableStyleMedium2",
+            hide_gridlines=True)
+        wb.close()
+
+    @classmethod
+    def from_excel(cls, source: Path):
+        acc_df = pl.read_excel(source, table_name="Comptes",
+                               schema_overrides={
+                                   'Compte': pl.String,
+                                   'Type': pl.String,
+                                   'Groupe': pl.String,
+                                   'Sous-groupe': pl.String,
+                                   'Numéro': pl.Int64
+                               })
+        accounts = Account.from_dataframe(acc_df)
+        accounts_dict = {a.name: a for a in accounts}
+
+        postings_df = pl.read_excel(
+            source, table_name="Txns",
+            schema_overrides={
+                'No txn': pl.Int64,
+                'Date': pl.Date,
+                'Compte': pl.String,
+                'Montant': pl.Float64,
+                'Date du relevé': pl.Date,
+                'Commentaire': pl.String,
+                'Description du relevé': pl.String,
+            })
+        txns = Txn.from_dataframe(
+            postings_df, accounts=accounts_dict)
+
+        bassertions = pl.read_excel(
+            source, table_name="Soldes",
+            schema_overrides={
+                'Date': pl.Date,
+                'Compte': pl.String,
+                'Solde': pl.Float64,
+                'Commentaire': pl.String
+            })
+        bassertions = BAssertion.from_dataframe(
+            bassertions, accounts=accounts_dict)
+
+        return Journal(accounts=accounts, txns=txns, bassertions=bassertions)
 
 def subset_sum(amounts: list[Decimal], target: Decimal) -> list[int]:
     """

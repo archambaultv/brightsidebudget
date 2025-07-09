@@ -1,6 +1,13 @@
 {
     "journal_path": "journal.xlsx",
     "backup_dir": "../output/backups",
-    "verify_no_uncategorized_txns": true,
-    "verify_balance_assertions": true
+    "check_config": {
+        "verify_no_uncategorized_txns": true,
+        "verify_balance_assertions": true
+    },
+    "export_config": {
+        "export_path": "../output/exported_journal.xlsx"
+    },
+    "import_config": {},
+    "rewrite_config": {}
 }

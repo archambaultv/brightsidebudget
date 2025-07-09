@@ -1,7 +1,7 @@
 import pytest
 from datetime import date
 from decimal import Decimal
-from brightsidebudget.bassertion.bassertion import BAssertion
+from brightsidebudget.bassertion import BAssertion
 from brightsidebudget.account.account import Account
 
 @pytest.fixture

@@ -6,8 +6,8 @@ import logging
 import click
 
 from brightsidebudget.bank_import.import_service import ImportService
+from brightsidebudget.cli.export_command import export_journal
 from brightsidebudget.config import Config
-from brightsidebudget.journal.excel_journal_repository import ExcelJournalRepository
 
 
 def setup_logging(config: Config) -> logging.Logger:
@@ -62,7 +62,7 @@ def setup_logging(config: Config) -> logging.Logger:
 
 def import_txns_command(config_path: Path, dry_run: bool = False):
     """
-    Génère la grille d'évaluation à présenter aux élèves à partir du fichier de configuration.
+    Importe de nouvelles transactions dans le journal à partir du fichier de configuration.
     """
     config = Config.from_user_config(config_path)
     logger = setup_logging(config)
@@ -85,10 +85,9 @@ def import_txns_command(config_path: Path, dry_run: bool = False):
         shutil.copy(config.journal_path, config.backup_dir / backup_name)
 
         # Save the journal after import
-        repo = ExcelJournalRepository()
-        repo.write_journal(journal=journal, destination=config.journal_path,
-                           renumber=True,
-                           first_fiscal_month=config.first_fiscal_month)
+        journal.to_excel(destination=config.journal_path)
+        if config.import_config.export_after_import:
+            export_journal(config, journal)
     msg = f"Importation terminée{' (dry-run)' if dry_run else ''}."
     logger.info(msg)
     print(msg)

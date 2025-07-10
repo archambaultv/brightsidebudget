@@ -12,7 +12,7 @@ def accounts():
         "Revenus A": Account(name="Revenus A", type="Revenus", number=4001),  # type: ignore
         "Revenus B": Account(name="Revenus B", type="Revenus", number=4002),  # type: ignore
         "Dépenses courantes": Account(name="Dépenses courantes", type="Dépenses", number=5001),  # type: ignore
-        "Non classé": Account(name="Non classé", type="Non classé", number=6001),  # type: ignore
+        "Non classé": Account(name="Non classé", type="Dépenses", number=5999),  # type: ignore
     }
 
 @pytest.fixture

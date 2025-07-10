@@ -8,7 +8,7 @@ from brightsidebudget.config import Config
 @click.command(
     name="check",
     help=(
-        "Vérifie la validité du journal. "
+        "Vérifie la validité du journal."
     )
 )
 @click.argument(
@@ -19,7 +19,7 @@ from brightsidebudget.config import Config
 
 def check_command(config_path: Path):
     """
-    Génère la grille d'évaluation à présenter aux élèves à partir du fichier de configuration.
+    Vérifie la validité du journal.
     """
     config = Config.from_user_config(config_path)
     config.get_journal()

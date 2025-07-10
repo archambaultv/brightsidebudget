@@ -12,9 +12,13 @@ Journal class encompasses a collection of accounts, postings, balance
 assertions, along with various methods to manipulate these objects.
 
 The command line interface (CLI) allows you to interact with the journal. The
-two commands available are:
+availabe commands are:
 - `check`: to check the journal for inconsistencies and errors.
 - `import`: to import data into the journal.
+- `export`: to export the journal to an another Excel file with additional columns of information.
+    This command can also reset the opening balance date of the journal, so you don't have all the prior
+    years of data in the exported file.
+- `rewrite`: to rewrite the journal while renumbering the transactions and other options.
 
-Both of these commands take a configuration file as an argument. See the
-`tests/fixture` directory for examples of configuration files.
+All of these commands take a configuration file as an argument. See the
+[`tests/fixture`](./tests/fixtures/) directory for examples of configuration files.

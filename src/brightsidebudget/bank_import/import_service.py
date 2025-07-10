@@ -8,9 +8,9 @@ from dateutil.relativedelta import relativedelta
 from brightsidebudget.account.account import Account
 from brightsidebudget.bank_import.bank_csv import BankCsv
 from brightsidebudget.bank_import.classifier import IClassifier, RuleClassifier
-from brightsidebudget.bassertion.bassertion import BAssertion
+from brightsidebudget.bassertion import BAssertion
 from brightsidebudget.config import Config
-from brightsidebudget.journal.journal import Journal
+from brightsidebudget.journal import Journal
 from brightsidebudget.txn.posting import Posting
 from brightsidebudget.txn.txn import Txn
 
@@ -54,11 +54,11 @@ class ImportService:
         Imports new transactions into the journal based on the configuration.
         Modifies the journal in place and returns the new transactions added.
         """
-        if not config.importation:
+        if not config.import_config.importation:
             return []
 
         new_txns: list[Txn] = []
-        for import_conf in config.importation:
+        for import_conf in config.import_config.importation:
             # Create classifier
             acc = journal.get_account(import_conf["account"])
             acc_dict = {a.name: a for a in journal.accounts}
@@ -98,19 +98,19 @@ class ImportService:
     def auto_update_journal(self, journal: Journal, config: Config):
         acc_names = [a.name for a in journal.accounts]
         # Automatically fix statement dates for specified accounts
-        for a in config.auto_stmt_date:
+        for a in config.import_config.auto_stmt_date:
             if a not in acc_names:
                 raise ValueError(f"Account '{a}' not found in journal")
             self.fix_statement_date(journal, a)
 
         # Automatically add balance assertions for specified accounts
-        for a, annual_rate in config.auto_balance_assertion.items():
+        for a, annual_rate in config.import_config.auto_balance_assertion.items():
             if a not in acc_names:
                 raise ValueError(f"Account '{a}' not found in journal")
             self.auto_balance_assertion(journal, a, annual_rate)
 
         # Automatically auto balance for specified accounts
-        for a, counter in config.auto_balance.items():
+        for a, counter in config.import_config.auto_balance.items():
             if a not in acc_names:
                 raise ValueError(f"Account '{a}' not found in journal")
             if counter not in acc_names:

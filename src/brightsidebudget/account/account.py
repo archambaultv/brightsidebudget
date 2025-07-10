@@ -3,7 +3,6 @@ import polars as pl
 
 from brightsidebudget.account.account_type import AccountType
 
-
 class Account(BaseModel):
     model_config = {"frozen": True}
 

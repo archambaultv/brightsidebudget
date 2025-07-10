@@ -1,9 +1,9 @@
 import pytest
 from datetime import date
 from decimal import Decimal
-from brightsidebudget.journal.journal import Journal
+from brightsidebudget.journal import Journal
 from brightsidebudget.account.account import Account
-from brightsidebudget.bassertion.bassertion import BAssertion
+from brightsidebudget.bassertion import BAssertion
 from brightsidebudget.txn.posting import Posting
 from brightsidebudget.txn.txn import Txn
 

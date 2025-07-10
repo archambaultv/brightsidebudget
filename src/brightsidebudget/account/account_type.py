@@ -8,8 +8,7 @@ VALIDATION_RANGE: dict[str, tuple[int, int]] = {
     "Passifs": (2000, 2999), 
     "Capitaux propres": (3000, 3999),
     "Revenus": (4000, 4999),
-    "Dépenses": (5000, 5999),
-    "Non classé": (6000, 6999)
+    "Dépenses": (5000, 5999)
 }
 
 class AccountType(BaseModel):
@@ -17,7 +16,7 @@ class AccountType(BaseModel):
     Represents the type of an account.
     """
     model_config = ConfigDict(frozen=True)
-    name : Literal["Actifs", "Passifs", "Capitaux propres", "Revenus", "Dépenses", "Non classé"]
+    name : Literal["Actifs", "Passifs", "Capitaux propres", "Revenus", "Dépenses"]
 
     def sort_key(self) -> int:
         """

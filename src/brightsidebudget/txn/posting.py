@@ -40,34 +40,3 @@ class Posting(BaseModel):
         Sorts by date, then by account number, then by transaction ID.
         """
         return self.date, self.account.number, self.txn_id
-
-    @staticmethod
-    def renumber(postings: list['Posting']) -> list['Posting']:
-        """
-        Renumber postings in the list by filling gaps in transaction IDs
-        and ensuring they are sequential starting from 1.
-        """
-        if not postings:
-            return []
-
-        # Sort postings by their sort key
-        ps = sorted(postings, key=lambda p: p.sort_key())
-        
-        # Initialize result list with first posting renumbered to 1
-        result = [ps[0].model_copy(update={"txn_id": 1})]
-        last_txn_id = ps[0].txn_id
-        
-        # Process remaining postings
-        for posting in ps[1:]:
-            if posting.txn_id != last_txn_id:
-                # New transaction - increment ID
-                new_id = result[-1].txn_id + 1
-            else:
-                # Same transaction - keep same ID
-                new_id = result[-1].txn_id
-            
-            new_posting = posting.model_copy(update={"txn_id": new_id})
-            result.append(new_posting)
-            last_txn_id = posting.txn_id
-        
-        return result

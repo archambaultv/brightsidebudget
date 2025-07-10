@@ -1,24 +1,61 @@
+from datetime import date
 from pathlib import Path
 from pydantic import BaseModel, ConfigDict, Field
 
-from brightsidebudget.journal.journal import Journal
-from brightsidebudget.journal.excel_journal_repository import ExcelJournalRepository
+from brightsidebudget.journal import Journal
 
+class ExportConfig(BaseModel):
+    """
+    Configuration for exporting the journal.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    export_path: Path
+    first_fiscal_month: int = Field(ge=1, le=12, default=1)
+    split_into_pairs: bool = False
+    renumber: bool = False
+    opening_balance_date: date | None = None
+    opening_balance_account: str | None = None
+
+class ImportConfig(BaseModel):
+    """
+    Configuration for importing transactions into the journal.
+    """
+    auto_stmt_date: list[str] = []
+    auto_balance: dict[str, str] = {}
+    auto_balance_assertion: dict[str, float] = {}
+    importation: list[dict] = []
+    export_after_import: bool = True
+
+class CheckConfig(BaseModel):
+    """
+    Configuration for checking the journal.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    forbidden_accounts_for_txns: list[str] = []
+    verify_balance_assertions: bool = True
+
+class RewriteConfig(BaseModel):
+    """
+    Configuration for rewriting the journal.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    split_into_pairs: bool = False
+    renumber: bool = False
 
 class Config(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     journal_path: Path
-    backup_dir: Path = Path("sauvagardes")
-    log_dir: Path = Path("logs")
-    first_fiscal_month: int = Field(ge=1, le=12, default=1)
-    verify_no_uncategorized_txns: bool = True
-    verify_balance_assertions: bool = True
-    auto_stmt_date: list[str] = []
-    auto_balance: dict[str, str] = {}
-    auto_balance_assertion: dict[str, float] = {}
-    importation: list[dict] = []
+    backup_dir: Path = Path("Sauvegardes")
+    log_dir: Path = Path("Logs")
 
+    check_config: CheckConfig
+    export_config: ExportConfig
+    import_config: ImportConfig
+    rewrite_config: RewriteConfig
 
     def get_journal(self, skip_check: bool = False) -> Journal:
         """
@@ -27,21 +64,24 @@ class Config(BaseModel):
         if not self.journal_path.exists():
             raise FileNotFoundError(f"Journal file not found: {self.journal_path}")
 
-        if self.journal_path.suffix.lower() == '.xlsx':
-            repo = ExcelJournalRepository()
-        else:
+        if not self.journal_path.suffix.lower() == '.xlsx':
             raise ValueError(f"Unsupported journal file format: {self.journal_path}")
-        journal = repo.read_journal(self.journal_path)
+        journal = Journal.from_excel(self.journal_path)
 
         if not skip_check:
-            if self.verify_no_uncategorized_txns:
-                uncat = [t for t in journal.txns if t.is_uncategorized()]
-                if uncat:
-                    ids = ', '.join(str(t.txn_id) for t in uncat)
-                    raise ValueError("Journal contains uncategorized transactions. "
+            if self.check_config.forbidden_accounts_for_txns:
+                forbidden_txns = []
+                for txn in journal.txns:
+                    for posting in txn.postings:
+                        if posting.account.type.name in self.check_config.forbidden_accounts_for_txns:
+                            forbidden_txns.append(txn)
+                            break
+                if forbidden_txns:
+                    ids = ', '.join(str(t.txn_id) for t in forbidden_txns)
+                    raise ValueError("Journal contains transactions with forbidden accounts: " +
                                     f"Transaction IDs: {ids}")
 
-            if self.verify_balance_assertions:
+            if self.check_config.verify_balance_assertions:
                 unbal = journal.failed_bassertions()
                 if unbal:
                     msg = "Journal contains balance assertions that do not balance."

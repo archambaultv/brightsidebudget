@@ -2,7 +2,7 @@
     "journal_path": "journal.xlsx",
     "backup_dir": "../output/backups",
     "check_config": {
-        "verify_no_uncategorized_txns": true,
+        "forbidden_accounts_for_txns": ["Non classé"],
         "verify_balance_assertions": true
     },
     "export_config": {

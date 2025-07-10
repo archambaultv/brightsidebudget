@@ -26,9 +26,6 @@ class Txn(BaseModel):
     def accounts(self) -> list[Account]:
         return sorted({p.account for p in self.postings}, key=lambda a: a.sort_key()) # type: ignore
 
-    def is_uncategorized(self) -> bool:
-        return any(p.account.type.name == "Non classé" for p in self.postings)
-
     def sort_key(self) -> tuple[date_type, int, int]:
         """
         Sort key for transactions.
@@ -47,6 +44,8 @@ class Txn(BaseModel):
     def split_into_pairs(txns: list['Txn']) -> list['Txn']:
         """
         Split transactions into the equivalent of multiple transactions with two postings.
+        This is possible when a transaction has more than two postings, with one posting being a single amount
+        and the others being multiple amounts of the opposite sign.
         """
         pairs = []
         next_id = max((p.txn_id for p in txns), default=0) + 1

@@ -3,7 +3,7 @@ import pytest
 from brightsidebudget.account.account_type import AccountType
 
 @pytest.mark.parametrize("name", [
-    "Actifs", "Passifs", "Capitaux propres", "Revenus", "Dépenses", "Non classé"
+    "Actifs", "Passifs", "Capitaux propres", "Revenus", "Dépenses"
 ])
 def test_valid_account_type_names(name):
     acc_type = AccountType(name=name)
@@ -28,8 +28,6 @@ def test_invalid_account_type_raises(invalid_name):
     ("Revenus", 4999),
     ("Dépenses", 5000),
     ("Dépenses", 5999),
-    ("Non classé", 6000),
-    ("Non classé", 6999),
 ])
 def test_validate_number_valid(name, number):
     acc_type = AccountType(name=name)
@@ -45,9 +43,7 @@ def test_validate_number_valid(name, number):
     ("Revenus", 3999),
     ("Revenus", 5000),
     ("Dépenses", 4999),
-    ("Dépenses", 6000),
-    ("Non classé", 5999),
-    ("Non classé", 7000),
+    ("Dépenses", 6000)
 ])
 def test_validate_number_invalid(name, number):
     acc_type = AccountType(name=name)
@@ -60,8 +56,7 @@ def test_lt_comparison():
     c = AccountType(name="Capitaux propres").sort_key()
     d = AccountType(name="Revenus").sort_key()
     e = AccountType(name="Dépenses").sort_key()
-    f = AccountType(name="Non classé").sort_key()
-    assert a < b < c < d < e < f
+    assert a < b < c < d < e
 
 def test_frozen_account_type():
     acc_type = AccountType(name="Actifs")

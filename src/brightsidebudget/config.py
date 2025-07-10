@@ -32,7 +32,7 @@ class CheckConfig(BaseModel):
     """
     model_config = ConfigDict(extra="forbid")
 
-    verify_no_uncategorized_txns: bool = True
+    forbidden_accounts_for_txns: list[str] = []
     verify_balance_assertions: bool = True
 
 class RewriteConfig(BaseModel):
@@ -68,11 +68,16 @@ class Config(BaseModel):
         journal = Journal.from_excel(self.journal_path)
 
         if not skip_check:
-            if self.check_config.verify_no_uncategorized_txns:
-                uncat = [t for t in journal.txns if t.is_uncategorized()]
-                if uncat:
-                    ids = ', '.join(str(t.txn_id) for t in uncat)
-                    raise ValueError("Journal contains uncategorized transactions. "
+            if self.check_config.forbidden_accounts_for_txns:
+                forbidden_txns = []
+                for txn in journal.txns:
+                    for posting in txn.postings:
+                        if posting.account.type.name in self.check_config.forbidden_accounts_for_txns:
+                            forbidden_txns.append(txn)
+                            break
+                if forbidden_txns:
+                    ids = ', '.join(str(t.txn_id) for t in forbidden_txns)
+                    raise ValueError("Journal contains transactions with forbidden accounts: " +
                                     f"Transaction IDs: {ids}")
 
             if self.check_config.verify_balance_assertions:

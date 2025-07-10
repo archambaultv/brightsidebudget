@@ -25,6 +25,7 @@ class ImportConfig(BaseModel):
     auto_balance: dict[str, str] = {}
     auto_balance_assertion: dict[str, float] = {}
     importation: list[dict] = []
+    export_after_import: bool = True
 
 class CheckConfig(BaseModel):
     """

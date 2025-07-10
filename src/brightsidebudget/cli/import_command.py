@@ -6,6 +6,7 @@ import logging
 import click
 
 from brightsidebudget.bank_import.import_service import ImportService
+from brightsidebudget.cli.export_command import export_journal
 from brightsidebudget.config import Config
 
 
@@ -85,6 +86,8 @@ def import_txns_command(config_path: Path, dry_run: bool = False):
 
         # Save the journal after import
         journal.to_excel(destination=config.journal_path)
+        if config.import_config.export_after_import:
+            export_journal(config, journal)
     msg = f"Importation terminée{' (dry-run)' if dry_run else ''}."
     logger.info(msg)
     print(msg)

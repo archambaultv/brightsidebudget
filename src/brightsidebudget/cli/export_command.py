@@ -3,6 +3,7 @@ from pathlib import Path
 import click
 
 from brightsidebudget.config import Config
+from brightsidebudget.journal import Journal
 
 
 @click.command(
@@ -23,6 +24,10 @@ def export_command(config_path: Path):
     """
     config = Config.from_user_config(config_path)
     journal =config.get_journal()
+    export_journal(config, journal)
+
+
+def export_journal(config: Config, journal: Journal):
     opening_balance_account = None
     if config.export_config.opening_balance_account:
         opening_balance_account = journal.get_account(config.export_config.opening_balance_account)

@@ -189,18 +189,25 @@ class Journal(BaseModel):
         acc_df.write_excel(
             workbook=wb,
             worksheet="Comptes",
+            autofit=True,
+            column_formats={"Numéro": "0"},
             table_name="Comptes",
             table_style="TableStyleMedium2",
             hide_gridlines= True)
         ps_df.write_excel(
             workbook=wb,
             worksheet="Txns",
+            autofit=True,
+            column_widths={"Commentaire": 350, "Autres comptes": 350, "Description du relevé": 350},
+            column_formats={"No txn": "0", "Année fiscale": "0"},
             table_name="Txns",
             table_style="TableStyleMedium2",
             hide_gridlines=True)
         bassertions_df.write_excel(
             workbook=wb,
             worksheet="Soldes",
+            autofit=True,
+            column_widths={"Commentaire": 350},
             table_name="Soldes",
             table_style="TableStyleMedium2",
             hide_gridlines=True)

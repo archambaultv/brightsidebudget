@@ -4,7 +4,7 @@ import shutil
 
 import click
 
-from brightsidebudget.config import Config
+from brightsidebudget.config.config import Config
 
 
 @click.command(

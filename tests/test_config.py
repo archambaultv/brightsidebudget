@@ -1,5 +1,5 @@
 from pathlib import Path
-from brightsidebudget.config import Config
+from brightsidebudget.config.config import Config
 
 
 def test_get_journal(config_fixture_path: Path):

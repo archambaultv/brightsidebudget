@@ -41,7 +41,7 @@ class Account(BaseModel):
         """
         Convert a list of Account objects to a dictionary suitable for DataFrame creation.
         """
-        xs = [a.model_dump() for a in accounts]
+        xs = [a.model_dump(warnings=False) for a in accounts]
         for x in xs:
             x['type'] = x['type']["name"]
         df = pl.DataFrame(

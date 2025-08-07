@@ -4,6 +4,7 @@ import logging
 from brightsidebudget.bank_import.bank_csv import BankCsv
 from brightsidebudget.bank_import.classifier import RuleClassifier, Rule
 from brightsidebudget.account.account import Account
+from brightsidebudget.config.import_config import BankCsvConfig
 
 @pytest.fixture
 def accounts():
@@ -19,7 +20,8 @@ def accounts():
 def classifier(accounts, rules_fixture_path):
     logger = logging.getLogger()
     logger.addHandler(logging.NullHandler())
-    return RuleClassifier(file=rules_fixture_path, accounts=accounts, logger=logger)
+    return RuleClassifier(file=rules_fixture_path, accounts=accounts, 
+                          default_account="Non classé", logger=logger)
 
 @pytest.fixture
 def account():
@@ -29,14 +31,15 @@ def account():
 def bank_csv(account, bank_csv_fixture_path):
     return BankCsv(
         file=bank_csv_fixture_path,
-        date_col="date",
         account=account,
+        config=BankCsvConfig(
+        date_col="date",
         stmt_desc_cols=["category", "description"],
         amount_in_col="credit",
         amount_out_col="debit",
         encoding="utf8",
         csv_delimiter=",",
-        skiprows=0,
+        skiprows=0)
     )
 
 def test_classify(classifier: RuleClassifier, bank_csv: BankCsv):

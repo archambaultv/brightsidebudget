@@ -8,8 +8,9 @@ from dateutil.relativedelta import relativedelta
 from brightsidebudget.account.account import Account
 from brightsidebudget.bank_import.bank_csv import BankCsv
 from brightsidebudget.bank_import.classifier import IClassifier, RuleClassifier
+from brightsidebudget.bank_import.newtxn import NewTxn
 from brightsidebudget.bassertion import BAssertion
-from brightsidebudget.config import Config
+from brightsidebudget.config.config import Config
 from brightsidebudget.journal import Journal
 from brightsidebudget.txn.posting import Posting
 from brightsidebudget.txn.txn import Txn
@@ -31,15 +32,15 @@ class ImportService:
         self.new_txns_report(txns)
         return journal
 
-    def new_txns_report(self, txns: list[Txn]):
+    def new_txns_report(self, txns: list[NewTxn]):
         """
         Prints a report of the new transactions imported.
         """
         # Number of uncategorized transactions
-        uncategorized = [t for t in txns if t.is_uncategorized()]
+        uncategorized = [t for t in txns if t.unmatched]
         descriptions = {}
         for t in uncategorized:
-            descriptions[t.postings[0].stmt_desc] = descriptions.get(t.postings[0].stmt_desc, 0) + 1
+            descriptions[t.txn.postings[0].stmt_desc] = descriptions.get(t.txn.postings[0].stmt_desc, 0) + 1
         if uncategorized:
             print(f"Found {len(uncategorized)} uncategorized transactions with {len(descriptions)} unique descriptions:")
             xs = sorted(descriptions.items(), key=lambda x: x[1], reverse=True)
@@ -49,7 +50,7 @@ class ImportService:
             for desc, count in xs:
                 print(f"  - {desc:<{max_desc_width}} ({count:>{max_count_width}} occurrences)")
 
-    def import_new_txns(self, journal: Journal, config: Config) -> list[Txn]:
+    def import_new_txns(self, journal: Journal, config: Config) -> list[NewTxn]:
         """
         Imports new transactions into the journal based on the configuration.
         Modifies the journal in place and returns the new transactions added.
@@ -57,34 +58,36 @@ class ImportService:
         if not config.import_config.importation:
             return []
 
-        new_txns: list[Txn] = []
+        new_txns: list[NewTxn] = []
+
         for import_conf in config.import_config.importation:
             # Create classifier
-            acc = journal.get_account(import_conf["account"])
+            acc = journal.get_account(import_conf.account)
             acc_dict = {a.name: a for a in journal.accounts}
             classifier = RuleClassifier(
-                file=import_conf["rules"]["file"],
+                file=import_conf.rules.file,
+                default_account=import_conf.rules.default_account,
                 accounts=acc_dict,
                 logger=self.logger
             )
-            msg = f"Using classifier from '{import_conf['rules']['file']}' for account '{acc.name}'"
+            msg = f"Using classifier from '{import_conf.rules.file}' for account '{acc.name}'"
             self.logger.info(msg)
 
             # Check import folder
-            import_folder = Path(import_conf["import_folder"])
+            import_folder = Path(import_conf.import_folder)
             if not import_folder.is_absolute():
                 import_folder = config.journal_path.parent / import_folder
             if not import_folder.exists():
                 raise FileNotFoundError(f"Import folder does not exist: {import_folder}")
 
-            # Create bank CSV import configuration
-            bank_csv_dict: dict = import_conf["bank_csv"]
-            bank_csv_dict.update({"account": acc})
             # Loop through CSV files in the import folder
             for file in import_folder.glob("*.csv"):
                 self.logger.info(f"Processing file: '{file.name}' for account '{acc.name}'")
-                bank_csv_dict["file"] = str(file)
-                bank_csv = BankCsv(**bank_csv_dict)
+                bank_csv = BankCsv(
+                    file=file,
+                    account=acc,
+                    config=import_conf.bank_csv
+                )
                 bank_ps = bank_csv.get_bank_postings()
                 txns = self.get_new_txns(journal, bank_ps, classifier)
                 msg = f"Importing {len(txns)} transactions from '{file.name}' into account '{acc.name}'"
@@ -92,7 +95,7 @@ class ImportService:
                 print(msg)
                 new_txns.extend(txns)
                 for t in txns:
-                    journal.add_txn(t)
+                    journal.add_txn(t.txn)
         return new_txns
 
     def auto_update_journal(self, journal: Journal, config: Config):
@@ -205,7 +208,7 @@ class ImportService:
 
     def get_new_txns(self, journal: Journal,
                      bank_ps: list[Posting],
-                     classifier: IClassifier) -> list[Txn]:
+                     classifier: IClassifier) -> list[NewTxn]:
         """
         Classifies the bank postings and returns new transactions that are not already in the journal.
         It is expected that all postings in `bank_ps` belong to the same account.
@@ -233,22 +236,22 @@ class ImportService:
         self.logger.info(f"Found {len(new_ps)} new postings after removing {nb_old} old postings.")
 
         # Classify the new postings
-        new_txns: list[Txn] = []
+        new_txns: list[NewTxn] = []
         for p in new_ps:
             txns = classifier.classify(posting=p)
             if not txns:
                 continue
-            if isinstance(txns, Txn):
+            if isinstance(txns, NewTxn):
                 txns = [txns]
             new_txns.extend(txns)
 
         # Renumber the transactions
         next_txnid = journal.next_txn_id()
-        for i, txn in enumerate(new_txns, start=next_txnid):
+        for i, ntxn in enumerate(new_txns, start=next_txnid):
             ps = []
-            for p in txn.postings:
+            for p in ntxn.txn.postings:
                 # Create a new posting with the same data but a new txn_id
                 ps.append(p.model_copy(update={"txn_id": i}))
-            new_txns[i - next_txnid] = Txn(postings=ps)
+            new_txns[i - next_txnid] = NewTxn(txn=Txn(postings=ps), unmatched=ntxn.unmatched)
 
         return new_txns

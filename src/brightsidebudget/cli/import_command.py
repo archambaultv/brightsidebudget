@@ -7,7 +7,7 @@ import click
 
 from brightsidebudget.bank_import.import_service import ImportService
 from brightsidebudget.cli.export_command import export_journal
-from brightsidebudget.config import Config
+from brightsidebudget.config.config import Config
 
 
 def setup_logging(config: Config) -> logging.Logger:

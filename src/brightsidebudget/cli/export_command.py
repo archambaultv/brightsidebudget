@@ -2,7 +2,7 @@ from pathlib import Path
 
 import click
 
-from brightsidebudget.config import Config
+from brightsidebudget.config.config import Config
 from brightsidebudget.journal import Journal
 
 

@@ -1,49 +1,11 @@
-from datetime import date
 from pathlib import Path
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 from brightsidebudget.journal import Journal
-
-class ExportConfig(BaseModel):
-    """
-    Configuration for exporting the journal.
-    """
-    model_config = ConfigDict(extra="forbid")
-
-    export_path: Path
-    first_fiscal_month: int = Field(ge=1, le=12, default=1)
-    split_into_pairs: bool = False
-    renumber: bool = False
-    opening_balance_date: date | None = None
-    opening_balance_account: str | None = None
-
-class ImportConfig(BaseModel):
-    """
-    Configuration for importing transactions into the journal.
-    """
-    auto_stmt_date: list[str] = []
-    auto_balance: dict[str, str] = {}
-    auto_balance_assertion: dict[str, float] = {}
-    importation: list[dict] = []
-    export_after_import: bool = True
-
-class CheckConfig(BaseModel):
-    """
-    Configuration for checking the journal.
-    """
-    model_config = ConfigDict(extra="forbid")
-
-    forbidden_accounts_for_txns: list[str] = []
-    verify_balance_assertions: bool = True
-
-class RewriteConfig(BaseModel):
-    """
-    Configuration for rewriting the journal.
-    """
-    model_config = ConfigDict(extra="forbid")
-
-    split_into_pairs: bool = False
-    renumber: bool = False
+from brightsidebudget.config.export_config import ExportConfig
+from brightsidebudget.config.import_config import ImportConfig
+from brightsidebudget.config.check_config import CheckConfig
+from brightsidebudget.config.rewrite_config import RewriteConfig
 
 class Config(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -71,9 +33,12 @@ class Config(BaseModel):
         if not skip_check:
             if self.check_config.forbidden_accounts_for_txns:
                 forbidden_txns = []
+                for n in self.check_config.forbidden_accounts_for_txns:
+                    if n not in [a.name for a in journal.accounts]:
+                        raise ValueError(f"Forbidden account not found in journal: {n}")
                 for txn in journal.txns:
                     for posting in txn.postings:
-                        if posting.account.type.name in self.check_config.forbidden_accounts_for_txns:
+                        if posting.account.name in self.check_config.forbidden_accounts_for_txns:
                             forbidden_txns.append(txn)
                             break
                 if forbidden_txns:
@@ -117,5 +82,16 @@ class Config(BaseModel):
             config = config.model_copy(update={
                 "log_dir": config_path.parent / config.log_dir
             })
+        for import_conf in config.import_config.importation:
+            if not import_conf.import_folder.is_absolute():
+                import_conf = import_conf.model_copy(update={
+                    "import_folder": config_path.parent / import_conf.import_folder
+                })
+            if not import_conf.rules.file.is_absolute():
+                import_conf = import_conf.model_copy(update={
+                    "rules": import_conf.rules.model_copy(update={
+                        "file": config_path.parent / import_conf.rules.file
+                    })
+                })
 
         return config

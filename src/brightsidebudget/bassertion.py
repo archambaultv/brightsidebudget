@@ -23,7 +23,7 @@ class BAssertion(BaseModel):
 
     @staticmethod
     def to_dataframe(bassertions: list['BAssertion']) -> pl.DataFrame:
-        xs = [b.model_dump() for b in bassertions]
+        xs = [b.model_dump(warnings=False) for b in bassertions]
         for x in xs:
             x['account'] = x['account']["name"]
         return pl.DataFrame(xs).rename(

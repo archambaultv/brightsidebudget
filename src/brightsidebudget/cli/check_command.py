@@ -2,7 +2,7 @@ from pathlib import Path
 
 import click
 
-from brightsidebudget.config import Config
+from brightsidebudget.config.config import Config
 
 
 @click.command(
@@ -22,5 +22,9 @@ def check_command(config_path: Path):
     Vérifie la validité du journal.
     """
     config = Config.from_user_config(config_path)
-    config.get_journal()
+    try:
+        config.get_journal()
+    except ValueError as e:
+        print(f"Le journal n'est pas valide: {e}")
+        return
     print("Le journal est valide. Aucune erreur détectée.")

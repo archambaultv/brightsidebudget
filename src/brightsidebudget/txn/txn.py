@@ -149,7 +149,7 @@ class Txn(BaseModel):
             accs = [a.name for a in accs]
             for p in t.postings:
                 other_accounts = [a for a in accs if a != p.account.name]
-                p_dict = p.model_dump()
+                p_dict = p.model_dump(warnings=False)
                 if renumber:
                     p_dict["txn_id"] = i + 1
                 p_dict["account"] = p_dict["account"]["name"]
